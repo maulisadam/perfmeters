@@ -39,7 +39,7 @@ const struct timespec TENTHSECOND = { 0, 100000000 }; /* sec, nanosec */
 ** time differencial utility function: returns int (nanoseconds)
 */
 long int diff_timespec(const struct timespec *endtime, const struct timespec *begtime) {
-  return (endtime->tv_sec - endtime->tv_sec) * 1000000000L + 
+  return (endtime->tv_sec - begtime->tv_sec) * 1000000000L + 
             (endtime->tv_nsec - begtime->tv_nsec);
 }
 
