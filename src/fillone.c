@@ -1,7 +1,8 @@
 /*
  * Author: Maulis Adam
  * Description:
- * 	file/device filler (performance tool)
+ *    file/device filler (performance tool)
+ *
  * initial release: 12-jan-2005
  * history:	3-jan-2007, Maulis, blocksize parameter, randomizing
  * 		4-jan-2007, Maulis, output only blocksize - byte/sec
@@ -19,7 +20,20 @@
  * to build:
  * 
  * apt-get install libaio-dev
- * cc -o fillone -Wall -laio fillone.c
+ * cc -o fillone -Wall fillone.c -laio
+
+ Copyright by Adam Maulis 2024
+
+ This program is free software: you can redistribute it and/or modify it under 
+ the terms of the GNU Affero General Public License as published by the 
+ Free Software Foundation, either version 3 of the License, or 
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, 
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+ See the GNU Affero General Public License for more details.
+
  */
 
 #if !defined(__x86_64__)
@@ -391,7 +405,7 @@ void sub_doio(int is_rand, int readflag)
 
 void puthelp(void)
 {
-	fprintf(stderr,"fillone version %s copyright by Maulis, Adam 2007, using GPL v2 or newer\n", VERS); 
+	fprintf(stderr,"fillone version %s copyright by Maulis, Adam 2014, using AGPL v3 or newer\n", VERS); 
 	fprintf(stderr,"Usage: fillone [options] filename blocksize datasize\n");
 	fprintf(stderr,"   uses DEBUG envvar...\n");
 	fprintf(stderr,"   -l lazy: datasize will be rounded up of multiple of blocksize\n");
