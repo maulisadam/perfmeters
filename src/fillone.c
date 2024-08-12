@@ -39,7 +39,7 @@
 #if !defined(__x86_64__)
 #error "64 bit architecture only *"
 #endif
-#define VERS "0.10"  /* update please! */
+#define VERS "0.11"  /* update please! */
 #define _GNU_SOURCE  /* for O_DIRECT constanst */
 #define _LARGEFILE64_SOURCE
 #include <inttypes.h>
@@ -65,12 +65,14 @@
 #endif
 #define roundup4k(x) ((((x-1LL)/4096LL)+1LL)*4096LL)
 
+#define RANDOMPOOL "/dev/urandom"
+
 static struct OPT {
 	int debug; /* for DEBUG envvar */
 	int rawmode;
 	int uncompressable;
 	int rndfh; /* random pool file handle */
-#define RANDOMPOOL "/dev/urandom"
+    char * randompool;
 	char * fname;
 	char * * buff; /* each thread has own buff */
 	long long threadcnt;
@@ -386,10 +388,17 @@ void sub_doio(int is_rand, int readflag)
 	fsync(fh); /* az idomeres elott kell lennie, mert van buffer amit ekkor urit*/
 
 	gettimeofday(&endt, NULL);
-	printf("%.0f", 
-	     (double)opt.datasize / ((double)endt.tv_sec - (double)begint.tv_sec +
-	     ((double)endt.tv_usec - (double)begint.tv_usec)/1000000.0)
-	); fflush(stdout);
+    {
+        double elapsedtime;
+
+        elapsedtime = ((double)endt.tv_sec - (double)begint.tv_sec +
+             ((double)endt.tv_usec - (double)begint.tv_usec)/1000000.0);
+
+        printf("elapsed:%f, byteps:%f, iops:%f",
+             elapsedtime,
+             (double)opt.datasize / elapsedtime,
+             (double)opt.totio / elapsedtime); fflush(stdout);
+    }
 	
 	result = io_destroy(ctx);
 	errh_iogeneric("io_destroy", result );
@@ -405,15 +414,19 @@ void sub_doio(int is_rand, int readflag)
 
 void puthelp(void)
 {
-	fprintf(stderr,"fillone version %s copyright by Maulis, Adam 2014, using AGPL v3 or newer\n", VERS); 
+	fprintf(stderr,"fillone version %s copyright by Maulis Adam 2024, using AGPL v3 or newer\n\n", VERS); 
 	fprintf(stderr,"Usage: fillone [options] filename blocksize datasize\n");
-	fprintf(stderr,"   uses DEBUG envvar...\n");
 	fprintf(stderr,"   -l lazy: datasize will be rounded up of multiple of blocksize\n");
-	fprintf(stderr,"   -p124 -p123 -p234 -p134 -p1 -p2 ... (default: -p1234)\n");
-	fprintf(stderr,"      test phases: 1:seq write, 2:rnd write, 3:seq read, 4:rnd read\n");
+	fprintf(stderr,"   -p1 sequential write (overwrites data, extends file to datasize) (default test phase)\n");
+	fprintf(stderr,"   -p2 random write (overwrites data, does not extend file)\n");
+	fprintf(stderr,"   -p3 sequential read\n");
+	fprintf(stderr,"   -p4 random read\n");
 	fprintf(stderr,"   -r raw: uses O_DIRECT for open (disables local cache)\n");
 	fprintf(stderr,"   -u uncompressable and non-deduplicable pattern (the default is the 0xDEADBEEF pattern)\n");
-	fprintf(stderr,"   -t# thread count (# means integer)\n");
+	fprintf(stderr,"   -t# thread count (# means integer)\n\n");
+	fprintf(stderr,"Environment variables:\n");
+    fprintf(stderr,"    DEBUG  # if not set, there is no debug messages\n"); 
+    fprintf(stderr,"    RANDOMPOOL # if not set use %s\n", RANDOMPOOL);
 }
 
 int main(int argc, char* argv[])
@@ -433,9 +446,17 @@ int main(int argc, char* argv[])
 	if( NULL != getenv("DEBUG") ){
 		opt.debug = atoi(getenv("DEBUG"));
 		if( 0 == opt.debug ) opt.debug = 1;
+        printf("Debug messages are enabled.\n");fflush(stdout);
 	} else {
 		opt.debug = 0;
 	}
+
+    if( NULL != getenv("RANDOMPOOL") ){
+        opt.randompool = getenv("RANDOMPOOL");
+    }else{
+        opt.randompool = RANDOMPOOL;
+    }
+    if(opt.debug){printf(" randompool=%s\n", opt.randompool);fflush(stdout);}
 
 	for(optarg=1;  optarg < argc && argv[optarg][0] == '-'; optarg++ ){
 		if(opt.debug){printf(" processing opt%d:%s\n",optarg,argv[optarg]);fflush(stdout);}
@@ -461,16 +482,15 @@ int main(int argc, char* argv[])
 	}/*end for optarg */
 
 	if( argc < optarg + 3){
-		fprintf(stderr,"insufficient number of parameters\n");
+		fprintf(stderr,"Insufficient number of parameters.\n");
 		puthelp();
 		return 1;
 	}
 	
 	if(1>opt.threadcnt){
-		fprintf(stderr,"threadcount (-t) must be at least 1\n");
+		fprintf(stderr,"Threadcount (-t) must be at least 1\n");
 		return 1;
 	}
-	
 	
 	opt.fname = strdup(argv[optarg]);
 	if(opt.debug){printf(" filename=%s\n",opt.fname);fflush(stdout);}
@@ -512,9 +532,9 @@ int main(int argc, char* argv[])
 			opt.threadcnt);
 	}
 
-	opt.rndfh = open(RANDOMPOOL, O_RDONLY);
+	opt.rndfh = open(opt.randompool, O_RDONLY);
 	if( opt.rndfh <0 ){
-		fprintf(stderr, "Error opening '%s'", RANDOMPOOL);
+		fprintf(stderr, "Error opening '%s'", opt.randompool);
 		perror(" ");
 		exit(1) ;
 	}
@@ -543,35 +563,26 @@ int main(int argc, char* argv[])
 
 
 	
-	printf("%lld\t%lld\t", opt.threadcnt, opt.mbl);fflush(stdout);
+	printf("{threadcount:%lld, blocksize:%lld, iocount:%lld, ", opt.threadcnt, opt.mbl, opt.totio);fflush(stdout);
 
 	if(isseqwrite){
+        printf("type:\"seqwrite\", ");
+        fflush(stdout);
 		sub_doio(FALSE, O_WRONLY);
-	}else{
-		printf("N");
-	}
-	printf("\t");fflush(stdout);
-	
-	if(isrndwrite){
+	}else if(isrndwrite){
+        printf("type:\"rndwrite\", ");
+        fflush(stdout);
 		sub_doio(TRUE, O_WRONLY);
-	}else{
-		printf("N");
-	}
-	printf("\t");fflush(stdout);
-
-	if(isseqread){
+	}else if(isseqread){
+        printf("type:\"seqread\", ");
+        fflush(stdout);
 		sub_doio(FALSE, O_RDONLY);
-	}else{
-		printf("N");
-	}
-	printf("\t");fflush(stdout);
-
-	if(isrndread){
+	}else if(isrndread){
+        printf("rndread:\"seqread\", ");
+        fflush(stdout);
 		sub_doio(TRUE, O_RDONLY);
-	}else{
-		printf("N");
 	}
-	printf("\n");fflush(stdout);
-	
-	return 0;
+    printf("}\n");
+    fflush(stdout);	
+    return 0;
 }
