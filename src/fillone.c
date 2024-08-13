@@ -16,6 +16,7 @@
  *		24-sep-2007, Maulis, more confortable DEBUG
  *		17-oct-2016, Maulis, non-compressable (/dev/urandom) 64k fill 
  *		20-nov-2018, Maulis, parameter selectable compressable/noncompressable pattern
+ *      13-aug-2024, Maulis, output jsonify
  *
  * to build:
  * 
@@ -394,7 +395,7 @@ void sub_doio(int is_rand, int readflag)
         elapsedtime = ((double)endt.tv_sec - (double)begint.tv_sec +
              ((double)endt.tv_usec - (double)begint.tv_usec)/1000000.0);
 
-        printf("elapsed:%f, byteps:%f, iops:%f",
+        printf("\"elapsed\":%f, \"byteps\":%f, \"iops\":%f",
              elapsedtime,
              (double)opt.datasize / elapsedtime,
              (double)opt.totio / elapsedtime); fflush(stdout);
@@ -438,6 +439,7 @@ int main(int argc, char* argv[])
 	long long i;
 	unsigned long long j;
 	ssize_t status;
+	struct timeval starttime;
 	
 	opt.threadcnt = 1;
 	opt.rawmode = 0;
@@ -563,22 +565,26 @@ int main(int argc, char* argv[])
 
 
 	
-	printf("{threadcount:%lld, blocksize:%lld, iocount:%lld, ", opt.threadcnt, opt.mbl, opt.totio);fflush(stdout);
+	gettimeofday(&starttime, NULL);
+	printf("{\"start\":%ld.%06ld, \"threadcount\":%lld, \"blocksize\":%lld, \"iocount\":%lld, ", 
+            starttime.tv_sec, starttime.tv_usec,
+            opt.threadcnt, opt.mbl, opt.totio);
+    fflush(stdout);
 
 	if(isseqwrite){
-        printf("type:\"seqwrite\", ");
+        printf("\"type\":\"seqwrite\", ");
         fflush(stdout);
 		sub_doio(FALSE, O_WRONLY);
 	}else if(isrndwrite){
-        printf("type:\"rndwrite\", ");
+        printf("\"type\":\"rndwrite\", ");
         fflush(stdout);
 		sub_doio(TRUE, O_WRONLY);
 	}else if(isseqread){
-        printf("type:\"seqread\", ");
+        printf("\"type\":\"seqread\", ");
         fflush(stdout);
 		sub_doio(FALSE, O_RDONLY);
 	}else if(isrndread){
-        printf("rndread:\"seqread\", ");
+        printf("\"type\":\"rndread\", ");
         fflush(stdout);
 		sub_doio(TRUE, O_RDONLY);
 	}
