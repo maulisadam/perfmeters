@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -32,7 +33,63 @@
 #undef PRECISION
 
 
-/* 
+/*
+** grep -m 'model name\t: ' /proc/cpuinfo
+**   non posix thread reentrant!
+**  good old K&R: This code is so crappy, don't use it as an example.
+*/
+static char * get_cpu_model_name(void)
+{
+    static char buff[3000]; /* longest /proc/cpuinfo line legth is 800 at this time */
+    static int cache = 0;
+    FILE * fd;
+    size_t linelen;
+    int i;
+    char * matchstring = "model name\t: ";
+    int matchstringlen = strlen(matchstring);
+
+    //printf("D matchstringlen=%d\n", matchstringlen);
+    if( 0 != cache){
+        return buff;
+    }
+
+    fd = fopen("/proc/cpuinfo", "r");
+    if( NULL == fd){
+        dprintf(2, "Warning: error in open /proc/cpuinfo\n");
+        return "unknown cpu";
+    }
+    buff[0] = '\n';
+    while( 0 == cache && 0 != buff[0]){
+        fgets(buff, 3000, fd);
+        linelen = strlen(buff);
+        //printf("D loaded line: »%*s«\n", matchstringlen+1, buff);
+        if( '\n' != buff[linelen-1] ){
+            fclose(fd);
+            dprintf(2, "Warning: error in reading line from /proc/cpuinfo\n");
+            return "unknown cpu";
+        }
+        if( 0 == strncmp(buff, matchstring, matchstringlen)){
+            /* overlap strcpy */
+            for(i=0; i < linelen - matchstringlen; i++){
+                if( '\n' == buff[ i+matchstringlen]){
+                    buff[i]=0;
+                }else{
+                    buff[i] = buff[ i+matchstringlen];
+                }
+            }
+            cache = 1;
+        }
+    }
+    fclose(fd);
+    if(0 == cache){
+        return "unknown cpu";
+    }else{
+        return buff;
+    }
+}
+
+
+/*
 ** time differencial utility function: returns int (nanoseconds)
 */
 static inline long int diff_timespec(const struct timespec *endtime, const struct timespec *begtime) {
@@ -45,6 +102,7 @@ int main(int argc, const char * argv[])
 {
     struct timespec begintime, inittime, endtime;
     double flop;
+    int threadcnt;
 
 
     if( argc != 4){
@@ -53,6 +111,13 @@ int main(int argc, const char * argv[])
         dprintf(2,"\tn_X n_Y n_Z are integers, the shape of the matricies:\n");
         dprintf(2,"\tM1 is (n_X, n_Y), M2 is (n_Y, n_Z), R is (n_X, n_Z)\n");
         return 2;
+    }
+
+    // get cpu count
+    threadcnt = sysconf(_SC_NPROCESSORS_ONLN);
+    if(threadcnt < 1){
+        dprintf(2, "Err: main invalid cpu count. Cannot create threads\n");
+        exit(1);
     }
 
     /* calculate flops*/
@@ -79,9 +144,12 @@ int main(int argc, const char * argv[])
         ldmatrix_free(&in1);
         ldmatrix_free(&in2);
         ldmatrix_free(&out);
-        printf("{\"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
+        printf("{\"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"threadcount\":%d, \"device_type\":\"%s\", \"device\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
             atoi(argv[1]), atoi(argv[2]), atoi(argv[3]),
             "fp80",
+            threadcnt,
+            "pthread-cpu",
+            get_cpu_model_name(),
             diff_timespec(&inittime, &begintime)/1000000000.0,
             diff_timespec(&endtime, &inittime)/1000000000.0,
             flop/diff_timespec(&endtime, &inittime)
@@ -101,9 +169,12 @@ int main(int argc, const char * argv[])
         dmatrix_free(&in1);
         dmatrix_free(&in2);
         dmatrix_free(&out);
-        printf("{\"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
+        printf("{\"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"threadcount\":%d, \"device_type\":\"%s\", \"device\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
             atoi(argv[1]), atoi(argv[2]), atoi(argv[3]),
             "fp64",
+            threadcnt,
+            "pthread-cpu",
+            get_cpu_model_name(),
             diff_timespec(&inittime, &begintime)/1000000000.0,
             diff_timespec(&endtime, &inittime)/1000000000.0,
             flop/diff_timespec(&endtime, &inittime)
@@ -123,9 +194,12 @@ int main(int argc, const char * argv[])
         fmatrix_free(&in1);
         fmatrix_free(&in2);
         fmatrix_free(&out);
-        printf("{\"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
+        printf("{\"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"threadcount\":%d, \"device_type\":\"%s\", \"device\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
             atoi(argv[1]), atoi(argv[2]), atoi(argv[3]),
             "fp32",
+            threadcnt,
+            "pthread-cpu",
+            get_cpu_model_name(),
             diff_timespec(&inittime, &begintime)/1000000000.0,
             diff_timespec(&endtime, &inittime)/1000000000.0,
             flop/diff_timespec(&endtime, &inittime)

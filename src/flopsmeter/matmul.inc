@@ -419,37 +419,37 @@ static void * PREC_name(_matmul_t_thread)(void *arg)
 void PREC_name(_matmul_t)(matrix_t* _RESTRICT in1, matrix_t* _RESTRICT in2, matrix_t* _RESTRICT out, const char * file, const int line)
 {
 
-    PREC_name(matrix_assert)(in1, "dmatmul_t:in1", file, line);
-    PREC_name(matrix_assert)(in2, "dmatmul_t:in2", file, line);
-    PREC_name(matrix_assert)(out, "dmatmul_t:out", file, line);
+    PREC_name(matrix_assert)(in1, "matmul_t:in1", file, line);
+    PREC_name(matrix_assert)(in2, "matmul_t:in2", file, line);
+    PREC_name(matrix_assert)(out, "matmul_t:out", file, line);
 
     int threadcnt, i;
     pthread_t * threadp;
     struct PREC_name(matmul_t_threadargs) * threadargs;
 
     if(in1->i != out->i){
-        dprintf(2,"Err: dmatmul_t: in1 versus out shape mismatch %s:%i\n", file, line);
+        dprintf(2,"Err: matmul_t: in1 versus out shape mismatch %s:%i\n", file, line);
         exit(2);
     }
     if(in2->i != out->j){
-        dprintf(2,"Err: dmatmul_t: in2 versus out shape mismatch %s:%i\n", file, line);
+        dprintf(2,"Err: matmul_t: in2 versus out shape mismatch %s:%i\n", file, line);
         exit(2);
     }
     if(in1->j != in2->j){
-        dprintf(2,"Err: dmatmul_t: in1 versus in2 shape mismatch %s:%i\n", file, line);
+        dprintf(2,"Err: matmul_t: in1 versus in2 shape mismatch %s:%i\n", file, line);
         exit(2);
     }
     // get cpu count
     threadcnt = sysconf(_SC_NPROCESSORS_ONLN);
     if(threadcnt < 1){
-        dprintf(2, "Err: dmatmul_t: invalid cpu count. Cannot create threads\n");
+        dprintf(2, "Err: matmul_t: invalid cpu count. Cannot create threads\n");
         exit(1);
     }
     //printf("D threadcnt:%d\n", threadcnt);
     threadp = (pthread_t * ) malloc( threadcnt * sizeof(pthread_t));
     threadargs = (struct PREC_name(matmul_t_threadargs) *) malloc( threadcnt * sizeof(struct PREC_name(matmul_t_threadargs)));
     if(NULL == threadp || NULL == threadargs){
-        dprintf(2, "Err: dmatmul_t: cannot allocate memory for threads\n");
+        dprintf(2, "Err: matmul_t: cannot allocate memory for threads\n");
         exit(1);
     }
     // pthread_create
@@ -477,7 +477,7 @@ void PREC_name(_matmul_t)(matrix_t* _RESTRICT in1, matrix_t* _RESTRICT in2, matr
 
         retval = pthread_join(threadp[i], 0);
         if( retval ) {
-            dprintf(2, "Err: dmatmul_t: cannot join worker threads (%d)\n", i);
+            dprintf(2, "Err: matmul_t: cannot join worker threads (%d)\n", i);
             exit(1);
         } 
     }
