@@ -60,7 +60,7 @@ static char * get_cpu_model_name(void)
     }
     buff[0] = '\n';
     while( 0 == cache && 0 != buff[0]){
-        fgets(buff, 3000, fd);
+        (void) fgets(buff, 3000, fd);
         linelen = strlen(buff);
         //printf("D loaded line: »%*s«\n", matchstringlen+1, buff);
         if( '\n' != buff[linelen-1] ){
@@ -144,7 +144,8 @@ int main(int argc, const char * argv[])
         ldmatrix_free(&in1);
         ldmatrix_free(&in2);
         ldmatrix_free(&out);
-        printf("{\"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"threadcount\":%d, \"device_type\":\"%s\", \"device\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
+        printf("{\"timestamp\":%ld, \"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"threadcount\":%d, \"device_type\":\"%s\", \"device\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
+            endtime.tv_sec,
             atoi(argv[1]), atoi(argv[2]), atoi(argv[3]),
             "fp80",
             threadcnt,
@@ -169,7 +170,8 @@ int main(int argc, const char * argv[])
         dmatrix_free(&in1);
         dmatrix_free(&in2);
         dmatrix_free(&out);
-        printf("{\"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"threadcount\":%d, \"device_type\":\"%s\", \"device\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
+        printf("{\"timestamp\":%ld, \"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"threadcount\":%d, \"device_type\":\"%s\", \"device\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
+            endtime.tv_sec,
             atoi(argv[1]), atoi(argv[2]), atoi(argv[3]),
             "fp64",
             threadcnt,
@@ -194,7 +196,8 @@ int main(int argc, const char * argv[])
         fmatrix_free(&in1);
         fmatrix_free(&in2);
         fmatrix_free(&out);
-        printf("{\"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"threadcount\":%d, \"device_type\":\"%s\", \"device\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
+        printf("{\"timestamp\":%ld, \"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"threadcount\":%d, \"device_type\":\"%s\", \"device\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
+            endtime.tv_sec,
             atoi(argv[1]), atoi(argv[2]), atoi(argv[3]),
             "fp32",
             threadcnt,
