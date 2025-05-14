@@ -5,10 +5,8 @@
 ** purely for perfomance measuerement purposes
 **
 **
-**  Copyright by Adam Maulis, 2025  In terms of GNU GPL v3 or newer
+**  Copyright by Adam Maulis, 2025  In terms of GNU AGPL v3 or newer
 **
-**
-**  gcc -O4 -o flopsmeter  flopsmeter.c -march=native -DUSE_RESTRICT -Wall  -ffast-math -lpthread
 */
 
 
@@ -22,15 +20,7 @@
 #include <sys/stat.h>
 #include <pthread.h>
 
-#define PRECISION 80
-#include "matmul.inc"
-#undef PRECISION
-#define PRECISION 64
-#include "matmul.inc"
-#undef PRECISION
-#define PRECISION 32
-#include "matmul.inc"
-#undef PRECISION
+#include "matmul.h"
 
 
 /*
@@ -44,7 +34,7 @@ static char * get_cpu_model_name(void)
     static int cache = 0;
     FILE * fd;
     size_t linelen;
-    int i;
+    size_t i;
     char * matchstring = "model name\t: ";
     int matchstringlen = strlen(matchstring);
 

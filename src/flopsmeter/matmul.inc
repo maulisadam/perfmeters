@@ -5,7 +5,7 @@
 ** purely for perfomance measuerement purposes
 **
 **
-**  Copyright by Adam Maulis, 2025, In terms of GNU GPL v3 or newer
+**  Copyright by Adam Maulis, 2025, In terms of GNU AGPL v3 or newer
 **
 **
 **  this is a C include file (not a header one). Usage:
@@ -19,90 +19,34 @@
 
 
 
-
-
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <pthread.h>
-
-
-#if PRECISION == 80
+#if PRECISION == 128
+#   define PREC_t __float128
+#   define PREC_name(x) q##x
+#   define SAVE_FMT "%.36Qe"
+#   define matrix_t qmatrix
+#elif PRECISION == 80
 #   define PREC_t __float80
 #   define PREC_name(x) ld##x
 #   define SAVE_FMT "%.22Le%s"
 #   define matrix_t ldmatrix
-#   define ldmatrix_init(a,b,c)    ld_matrix_init(a,b,c, __FILE__, __LINE__)
-#   define ldmatrix_load(a,b)      ld_matrix_load(a,b, __FILE__, __LINE__)
-#   define ldmatrix_free(a)        ld_matrix_free(a, __FILE__, __LINE__)
-#   define ldmatrix_random(a)      ld_matrix_random(a, __FILE__, __LINE__)
-#   define ldmatrix_transpose(a,b) ld_matrix_transpose(a,b, __FILE__, __LINE__)
-#   define ldmatrix_print(a)       ld_matrix_print(a, __FILE__, __LINE__)
-#   define ldmatrix_save(a, b)     ld_matrix_save(a,b, __FILE__, __LINE__)
-#   define ldmatmul_t(a,b,c)       ld_matmul_t(a,b,c, __FILE__, __LINE__)
 #elif PRECISION == 64
 #   define PREC_t double
 #   define PREC_name(x) d##x
 #   define SAVE_FMT "%.18e%s"
 #   define matrix_t dmatrix
-#   define dmatrix_init(a,b,c)    d_matrix_init(a,b,c, __FILE__, __LINE__)
-#   define dmatrix_load(a,b)      d_matrix_load(a,b, __FILE__, __LINE__)
-#   define dmatrix_free(a)        d_matrix_free(a, __FILE__, __LINE__)
-#   define dmatrix_random(a)      d_matrix_random(a, __FILE__, __LINE__)
-#   define dmatrix_transpose(a,b) d_matrix_transpose(a,b, __FILE__, __LINE__)
-#   define dmatrix_print(a)       d_matrix_print(a, __FILE__, __LINE__)
-#   define dmatrix_save(a, b)     d_matrix_save(a,b, __FILE__, __LINE__)
-#   define dmatmul_t(a,b,c)       d_matmul_t(a,b,c, __FILE__, __LINE__)
 #elif PRECISION == 32
 #   define PREC_t float
 #   define PREC_name(x) f##x
 #   define SAVE_FMT "%.10e%s"
 #   define matrix_t fmatrix
-#   define fmatrix_init(a,b,c)    f_matrix_init(a,b,c, __FILE__, __LINE__)
-#   define fmatrix_load(a,b)      f_matrix_load(a,b, __FILE__, __LINE__)
-#   define fmatrix_free(a)        f_matrix_free(a, __FILE__, __LINE__)
-#   define fmatrix_random(a)      f_matrix_random(a, __FILE__, __LINE__)
-#   define fmatrix_transpose(a,b) f_matrix_transpose(a,b, __FILE__, __LINE__)
-#   define fmatrix_print(a)       f_matrix_print(a, __FILE__, __LINE__)
-#   define fmatrix_save(a, b)     f_matrix_save(a,b, __FILE__, __LINE__)
-#   define fmatmul_t(a,b,c)       f_matmul_t(a,b,c, __FILE__, __LINE__)
 #elif PRECISION == 16
-#   define PREC_t _Float16
+#   define PREC_t _float16
 #   define PREC_name(x) h##x
 #   define SAVE_FMT "%.6e%s"
 #   define matrix_t hmatrix
-#   define hmatrix_init(a,b,c)    h_matrix_init(a,b,c, __FILE__, __LINE__)
-#   define hmatrix_load(a,b)      h_matrix_load(a,b, __FILE__, __LINE__)
-#   define hmatrix_free(a)        h_matrix_free(a, __FILE__, __LINE__)
-#   define hmatrix_random(a)      h_matrix_random(a, __FILE__, __LINE__)
-#   define hmatrix_transpose(a,b) h_matrix_transpose(a,b, __FILE__, __LINE__)
-#   define hmatrix_print(a)       h_matrix_print(a, __FILE__, __LINE__)
-#   define hmatrix_save(a, b)     h_matrix_save(a,b, __FILE__, __LINE__)
-#   define hmatmul_t(a,b,c)       h_matmul_t(a,b,c, __FILE__, __LINE__)
 #else
-#   error "Only 16, 32, 64 and 80 bit fp precision are supported!"
+#   error "Only 16, 32, 64, 80 and 128 bit fp precision are supported!"
 #endif
-
-
-#ifdef USE_RESTRICT
-#   define _RESTRICT restrict
-#else
-#   define _RESTRICT
-#endif
-
-
-#define MATRIX_MAGIC 4294967087u  /* a nice prime. no other meanings */
-
-
-typedef struct {
-    PREC_t ** _RESTRICT m;
-    uint32_t i, j;
-    uint32_t magic;
-} PREC_name(matrix);
 
 
 static inline void PREC_name(matrix_assert) (const matrix_t* _RESTRICT dp, const char * msg, const char * file, const int line)
@@ -134,19 +78,14 @@ static inline void PREC_name(matrix_assert) (const matrix_t* _RESTRICT dp, const
 static inline void PREC_name(matrix_init_assert)(const matrix_t* _RESTRICT dp, const char * msg, const char * file, const int line)
 {
     if( NULL == dp){
-        dprintf(2,"Err in init: not a matrix %s:%d\n", file, line);
+        dprintf(2,"Err in %s: not a matrix %s:%d\n", msg, file, line);
         exit(2);
     }
     if( MATRIX_MAGIC == dp->magic){
-        dprintf(2,"Err in init: used matrix, no reinit %s:%d\n", file, line);
+        dprintf(2,"Err in %s: used matrix, no reinit %s:%d\n", msg, file, line);
         exit(2);
     }
 }
-
-
-#ifndef ROWALIGN
-#define ROWALIGN 16
-#endif
 
 void PREC_name(_matrix_init)(matrix_t* dp, uint32_t i, uint32_t j, const char* file, const int line)
 {
@@ -191,7 +130,8 @@ void PREC_name(_matrix_init)(matrix_t* dp, uint32_t i, uint32_t j, const char* f
 void PREC_name(_matrix_load) (matrix_t* dp, const char * filename, const char* file, const int line)
 {
 
-    int fd, retval, height, width, i, j, old_ii, ii;
+    int fd, retval;
+    uint32_t height, width, i, j, old_ii, ii;
     char * buff;
     struct stat statbuf;
 
@@ -340,6 +280,9 @@ void PREC_name(_matrix_save)(const matrix_t* dp, const char * savefile, const ch
 {
     uint32_t i,j;
     FILE * sfd;
+#if PRECISION==128
+    char buff[300];
+#endif
 
     PREC_name(matrix_assert)(dp, "save", file, line);
 
@@ -349,10 +292,19 @@ void PREC_name(_matrix_save)(const matrix_t* dp, const char * savefile, const ch
         exit(1);
     }
     for(i=0; i< dp->i; ++i){
+#if PRECISION==128
+        for(j=0; j< dp->j-1; ++j){
+            quadmath_snprintf(buff, 300, SAVE_FMT,  dp->m[i][j]);
+            fprintf(sfd, "%s ", buff);
+        }
+        quadmath_snprintf(buff, 300, SAVE_FMT,  dp->m[i][j]);
+        fprintf(sfd, "%s\n", buff);
+#else
         for(j=0; j< dp->j-1; ++j){
             fprintf(sfd, SAVE_FMT, dp->m[i][j], " ");
         }
         fprintf(sfd, SAVE_FMT, dp->m[i][j], "\n");
+#endif
     }
     fclose(sfd);
 }
@@ -367,7 +319,7 @@ void PREC_name(_matrix_save)(const matrix_t* dp, const char * savefile, const ch
 /* this seems faster than cblas_ddot() */
 static inline PREC_t PREC_name(vector_dot)(const PREC_t * _RESTRICT v1, const PREC_t * _RESTRICT v2, const uint32_t len)
 {
-    PREC_t register retval;
+    register PREC_t retval;
     uint32_t i;
      
     retval = *v1 * *v2;
@@ -489,4 +441,5 @@ void PREC_name(_matmul_t)(matrix_t* _RESTRICT in1, matrix_t* _RESTRICT in2, matr
 #undef PREC_name
 #undef PREC_t
 #undef SAVE_FMT
-#undef PRINT_FMT
+
+/* vim: set ft=c : */
