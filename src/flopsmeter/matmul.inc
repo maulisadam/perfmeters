@@ -1,6 +1,6 @@
 /* matmul.inc
 **
-** implementation of the matrix multiplication 
+** implementation of the matrix multiplication
 **
 ** purely for perfomance measuerement purposes
 **
@@ -59,10 +59,12 @@ static inline void PREC_name(matrix_assert) (const matrix_t* _RESTRICT dp, const
         dprintf(2,"Err in %s : null matrix %s:%d\n", msg, file, line);
         exit(2);
     }
+#ifdef ROWALIGN
     if( NULL == dp->m[0] ){
         dprintf(2,"Err in %s : null matrix row %s:%d\n", msg, file, line);
         exit(2);
     }
+#endif
     if( MATRIX_MAGIC != dp->magic ){
         dprintf(2,"Err in %s : wrong magic matrix %s:%d\n", msg, file, line);
         exit(2);
@@ -89,7 +91,6 @@ static inline void PREC_name(matrix_init_assert)(const matrix_t* _RESTRICT dp, c
 
 void PREC_name(_matrix_init)(matrix_t* dp, uint32_t i, uint32_t j, const char* file, const int line)
 {
-    uint32_t ii;
     uint32_t roundup_j;
 
     PREC_name(matrix_init_assert)(dp, "init", file, line);
@@ -98,6 +99,7 @@ void PREC_name(_matrix_init)(matrix_t* dp, uint32_t i, uint32_t j, const char* f
         dprintf(2,"Err in init: invalid matrix_shape:(%u, %u) %s:%d\n", i,j, file, line);
         exit(2);
     }
+#ifdef ROWALIGN
     dp->m = (PREC_t **) malloc( sizeof(PREC_t *) * i);
     if( NULL == dp->m ){
         dprintf(2,"Err in init: ENOMEM for malloc %s:%d\n", file, line);
@@ -109,13 +111,24 @@ void PREC_name(_matrix_init)(matrix_t* dp, uint32_t i, uint32_t j, const char* f
         roundup_j = (j/ROWALIGN +1) * ROWALIGN;
     }
 
-    for(ii=0; ii<i; ii++){
+    for(uint32_t ii=0; ii<i; ii++){
         dp->m[ii] = (PREC_t *) aligned_alloc(ROWALIGN, sizeof(PREC_t) * roundup_j);
         if( NULL == dp->m[ii] ){
             dprintf(2,"Err in init: ENOMEM for row malloc %s:%d\n", file, line);
             exit(2);
         }
     }
+#else
+    roundup_j = i*j;
+    if( 0 != roundup_j % 16){
+        roundup_j = (roundup_j/16+1) * 16;
+    }
+    dp->m = (PREC_t *) aligned_alloc(16, sizeof(PREC_t *) * roundup_j);
+    if( NULL == dp->m ){
+        dprintf(2,"Err in init: ENOMEM for malloc %s:%d\n", file, line);
+        exit(2);
+    }
+#endif
     dp->i = i;
     dp->j = j;
     dp->magic = MATRIX_MAGIC;
@@ -162,7 +175,7 @@ void PREC_name(_matrix_load) (matrix_t* dp, const char * filename, const char* f
     }
     //puts("D load after read");
     close(fd);
-    
+
     /* determine height(i) and width(j) */
     height = 0;
     for(i=0; i<statbuf.st_size; ++i){
@@ -192,7 +205,11 @@ void PREC_name(_matrix_load) (matrix_t* dp, const char * filename, const char* f
         }
         //printf("D load main convert loop. m i:%d j:%d offset:%d, old_ii:%d, ii:%d ", i, j, i*dp->j + j, old_ii, ii);
         //printf("value:%f\n", atof(buff+old_ii));
+#ifdef ROWALIGN
         dp->m[i][j] = atof(buff+old_ii);
+#else
+        dp->m[i*dp->j+j] = atof(buff+old_ii);
+#endif
         if( j+1 == dp->j){
             i = i+1;
             j = 0;
@@ -202,19 +219,20 @@ void PREC_name(_matrix_load) (matrix_t* dp, const char * filename, const char* f
         old_ii = ii+1;
     }/* end for ii */
 
-    free(buff);    
+    free(buff);
 }
 
 
 void PREC_name(_matrix_free)(matrix_t* dp, const char* file, const int line)
 {
-    uint32_t ii;
 
     PREC_name(matrix_assert)(dp, "free", file, line);
-    for(ii=0; ii<dp->i; ii++){
+#ifdef ROWALIGN
+    for(uint32_t ii=0; ii<dp->i; ii++){
         free(dp->m[ii]);
         dp->m[ii]=NULL;
     }
+#endif
     free(dp->m);
     dp->m = NULL;
     dp->i = 0;
@@ -232,8 +250,12 @@ void PREC_name(_matrix_random)(matrix_t* dp,  const char * file, const int line)
 
     for(ii=0; ii < dp->i; ii++){
         for(jj=0; jj < dp->j; ++jj){
+#ifdef ROWALIGN
             dp->m[ii][jj] = drand48();
             //dp->m[ii][jj] = ii+jj+1;
+#else
+            dp->m[ii*dp->j+jj] = drand48();
+#endif
         }
     }
 
@@ -244,18 +266,22 @@ void PREC_name(_matrix_random)(matrix_t* dp,  const char * file, const int line)
 void PREC_name(_matrix_transpose)(const matrix_t* in, matrix_t* out,  const char * file, const int line)
 {
     uint32_t ii, jj;
-    
+
     PREC_name(matrix_assert)(in, "transpose", file, line);
     PREC_name(matrix_assert)(out, "transpose", file, line);
     if( in->i != out->j || in->j != out->i){
-        dprintf(2, "Err in transpose: in (%u,%u) and out(%u,%u) matrix_tshape mismatch %s:%d\n", 
+        dprintf(2, "Err in transpose: in (%u,%u) and out(%u,%u) matrix_tshape mismatch %s:%d\n",
             in->i, in->j, out->i, out->j, file, line);
         exit(2);
     }
 
     for(ii=0; ii < in->i; ++ii){
         for(jj=0; jj < in->j; ++jj){
+#ifdef ROWALIGN
             out->m[jj][ii] = in->m[ii][jj];
+#else
+            out->m[jj*out->j + ii] = in->m[ii*in->j + jj];
+#endif
         }
     }
 }
@@ -268,7 +294,13 @@ void PREC_name(_matrix_print)(const matrix_t* dp, const char * file, const int l
     PREC_name(matrix_assert)(dp, "print", file, line);
     for(i=0; i< dp->i; ++i){
         for(j=0; j< dp->j; ++j){
-            printf("%.5f" , (double)dp->m[i][j]);
+            printf("%.5f",
+#ifdef ROWALIGN
+                (double)dp->m[i][j]
+#else
+                (double)dp->m[i*dp->j+j]
+#endif
+            );
         }
         puts("");
     }
@@ -294,16 +326,32 @@ void PREC_name(_matrix_save)(const matrix_t* dp, const char * savefile, const ch
     for(i=0; i< dp->i; ++i){
 #if PRECISION==128
         for(j=0; j< dp->j-1; ++j){
-            quadmath_snprintf(buff, 300, SAVE_FMT,  dp->m[i][j]);
+#ifdef ROWALIGN
+            quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i][j]);
+#else
+            quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i*dp->j+j]);
+#endif
             fprintf(sfd, "%s ", buff);
         }
-        quadmath_snprintf(buff, 300, SAVE_FMT,  dp->m[i][j]);
+#ifdef ROWALIGN
+        quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i][j]);
+#else
+        quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i*dp->j+j]);
+#endif
         fprintf(sfd, "%s\n", buff);
 #else
         for(j=0; j< dp->j-1; ++j){
+#ifdef ROWALIGN
             fprintf(sfd, SAVE_FMT, dp->m[i][j], " ");
+#else
+            fprintf(sfd, SAVE_FMT, dp->m[i*dp->j+j], " ");
+#endif
         }
+#ifdef ROWALIGN
         fprintf(sfd, SAVE_FMT, dp->m[i][j], "\n");
+#else
+        fprintf(sfd, SAVE_FMT, dp->m[i*dp->j+j], "\n");
+#endif
 #endif
     }
     fclose(sfd);
@@ -311,7 +359,7 @@ void PREC_name(_matrix_save)(const matrix_t* dp, const char * savefile, const ch
 
 
 /*******************************************************************
-    Lightly optimalized matrix multiplication routine. 
+    Lightly optimalized matrix multiplication routine.
     Requires a second matrix as transposed.
     multithreaded
 ********************************************************************/
@@ -321,7 +369,7 @@ static inline PREC_t PREC_name(vector_dot)(const PREC_t * _RESTRICT v1, const PR
 {
     register PREC_t retval;
     uint32_t i;
-     
+
     retval = *v1 * *v2;
     for(i=1; i < len; i++){
         retval += v1[i]*v2[i];
@@ -340,10 +388,10 @@ struct PREC_name(matmul_t_threadargs){
 
 
 static inline void PREC_name(_matmul_t_sub)(
-        const matrix_t* _RESTRICT in1, 
-        const matrix_t* _RESTRICT in2, 
-        matrix_t* _RESTRICT out, 
-        const uint32_t from, 
+        const matrix_t* _RESTRICT in1,
+        const matrix_t* _RESTRICT in2,
+        matrix_t* _RESTRICT out,
+        const uint32_t from,
         const uint32_t to)
 {
     uint32_t oi, oj;
@@ -351,10 +399,20 @@ static inline void PREC_name(_matmul_t_sub)(
     PREC_t * _RESTRICT rowpointer2;
 
     for(oi=from; oi < to; oi++){
+#if ROWALIGN
         rowpointer1 = in1->m[oi];
+#else
+        rowpointer1 = in1->m + (oi*in1->j);
+#endif
         for(oj=0; oj<out->j; oj++){
+#ifdef ROWALIGN
             rowpointer2 = in2->m[oj];
-            out->m[oi][oj] = PREC_name(vector_dot)(rowpointer1, rowpointer2, in1->j);
+            out->m[oi][oj] =
+#else
+            rowpointer2 = in2->m+ (oj*in2->j);
+            out->m[oi*out->j+oj] =
+#endif
+                PREC_name(vector_dot)(rowpointer1, rowpointer2, in1->j);
         }
     }
 }
@@ -431,7 +489,7 @@ void PREC_name(_matmul_t)(matrix_t* _RESTRICT in1, matrix_t* _RESTRICT in2, matr
         if( retval ) {
             dprintf(2, "Err: matmul_t: cannot join worker threads (%d)\n", i);
             exit(1);
-        } 
+        }
     }
 
 
