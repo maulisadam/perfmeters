@@ -160,25 +160,25 @@ int main(int argc, const char * argv[])
             );
 
     } else if( 0 == strcmp(argv[1], "fp128")){
-        ldmatrix in1, in2, in2_t, out;
+        qmatrix in1, in2, in2_t, out;
 
-        ldmatrix_load(&in1, argv[2]);
-        ldmatrix_load(&in2, argv[3]);
-        ldmatrix_init(&in2_t, in2.j, in2.i);
-        ldmatrix_transpose(&in2, &in2_t);
+        qmatrix_load(&in1, argv[2]);
+        qmatrix_load(&in2, argv[3]);
+        qmatrix_init(&in2_t, in2.j, in2.i);
+        qmatrix_transpose(&in2, &in2_t);
         /* calculate flops*/
         flop = (double)in1.j * (double)in1.i * (double)in2.j  ;      /* multiplications */
         flop += ((double)in1.j -1) *  (double)in1.i * (double)in2.j; /* additions */
 
-        ldmatrix_free(&in2);
-        ldmatrix_init(&out, in1.i, in2_t.i);
+        qmatrix_free(&in2);
+        qmatrix_init(&out, in1.i, in2_t.i);
         clock_gettime(CLOCK_REALTIME, &begintime);
-        ldmatmul_t(&in1, &in2_t, &out);
+        qmatmul_t(&in1, &in2_t, &out);
         clock_gettime(CLOCK_REALTIME, &endtime);
-        ldmatrix_save(&out, argv[4]);
-        ldmatrix_free(&in1);
-        ldmatrix_free(&in2_t);
-        ldmatrix_free(&out);
+        qmatrix_save(&out, argv[4]);
+        qmatrix_free(&in1);
+        qmatrix_free(&in2_t);
+        qmatrix_free(&out);
 
         printf("Precision: %s, time_matmul:%f Gflops:%f\n",
             argv[1],
