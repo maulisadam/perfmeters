@@ -55,6 +55,7 @@ typedef struct { __float128 POINTERTYPE _RESTRICT m; uint32_t i, j; uint32_t mag
 #   define qmatrix_print(a)       q_matrix_print(a, __FILE__, __LINE__)
 #   define qmatrix_save(a, b)     q_matrix_save(a,b, __FILE__, __LINE__)
 #   define qmatmul_t(a,b,c)       q_matmul_t(a,b,c, __FILE__, __LINE__)
+void qmatrix_assert(const qmatrix* _RESTRICT dp, const char * msg, const char * file, const int line);
 void q_matrix_init(qmatrix* dp, uint32_t i, uint32_t j, const char* file, const int line);
 void q_matrix_load (qmatrix* dp, const char * filename, const char* file, const int line);
 void q_matrix_free(qmatrix* dp, const char* file, const int line);
@@ -73,6 +74,7 @@ typedef struct { __float80 POINTERTYPE _RESTRICT m; uint32_t i, j; uint32_t magi
 #   define ldmatrix_print(a)       ld_matrix_print(a, __FILE__, __LINE__)
 #   define ldmatrix_save(a, b)     ld_matrix_save(a,b, __FILE__, __LINE__)
 #   define ldmatmul_t(a,b,c)       ld_matmul_t(a,b,c, __FILE__, __LINE__)
+void ldmatrix_assert(const ldmatrix* _RESTRICT dp, const char * msg, const char * file, const int line);
 void ld_matrix_init(ldmatrix* dp, uint32_t i, uint32_t j, const char* file, const int line);
 void ld_matrix_load (ldmatrix* dp, const char * filename, const char* file, const int line);
 void ld_matrix_free(ldmatrix* dp, const char* file, const int line);
@@ -91,6 +93,7 @@ typedef struct { double POINTERTYPE _RESTRICT m; uint32_t i, j; uint32_t magic; 
 #   define dmatrix_print(a)       d_matrix_print(a, __FILE__, __LINE__)
 #   define dmatrix_save(a, b)     d_matrix_save(a,b, __FILE__, __LINE__)
 #   define dmatmul_t(a,b,c)       d_matmul_t(a,b,c, __FILE__, __LINE__)
+void dmatrix_assert(const dmatrix* _RESTRICT dp, const char * msg, const char * file, const int line);
 void d_matrix_init(dmatrix* dp, uint32_t i, uint32_t j, const char* file, const int line);
 void d_matrix_load (dmatrix* dp, const char * filename, const char* file, const int line);
 void d_matrix_free(dmatrix* dp, const char* file, const int line);
@@ -109,6 +112,7 @@ typedef struct { float POINTERTYPE _RESTRICT m; uint32_t i, j; uint32_t magic; }
 #   define fmatrix_print(a)       f_matrix_print(a, __FILE__, __LINE__)
 #   define fmatrix_save(a, b)     f_matrix_save(a,b, __FILE__, __LINE__)
 #   define fmatmul_t(a,b,c)       f_matmul_t(a,b,c, __FILE__, __LINE__)
+void fmatrix_assert(const fmatrix* _RESTRICT dp, const char * msg, const char * file, const int line);
 void f_matrix_init(fmatrix* dp, uint32_t i, uint32_t j, const char* file, const int line);
 void f_matrix_load (fmatrix* dp, const char * filename, const char* file, const int line);
 void f_matrix_free(fmatrix* dp, const char* file, const int line);
@@ -128,6 +132,7 @@ typedef struct { __float16 POINTERTYPE _RESTRICT m; uint32_t i, j; uint32_t magi
 #   define hmatrix_print(a)       h_matrix_print(a, __FILE__, __LINE__)
 #   define hmatrix_save(a, b)     h_matrix_save(a,b, __FILE__, __LINE__)
 #   define hmatmul_t(a,b,c)       h_matmul_t(a,b,c, __FILE__, __LINE__)
+void hmatrix_assert(const hmatrix* _RESTRICT dp, const char * msg, const char * file, const int line);
 void h_matrix_init(hmatrix* dp, uint32_t i, uint32_t j, const char* file, const int line);
 void h_matrix_load (hmatrix* dp, const char * filename, const char* file, const int line);
 void h_matrix_free(hmatrix* dp, const char* file, const int line);

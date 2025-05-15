@@ -49,7 +49,7 @@
 #endif
 
 
-static inline void PREC_name(matrix_assert) (const matrix_t* _RESTRICT dp, const char * msg, const char * file, const int line)
+void PREC_name(matrix_assert) (const matrix_t* _RESTRICT dp, const char * msg, const char * file, const int line)
 {
     if( NULL == dp){
         dprintf(2,"Err in %s: not a matrix %s:%d\n", msg, file, line);
@@ -123,7 +123,7 @@ void PREC_name(_matrix_init)(matrix_t* dp, uint32_t i, uint32_t j, const char* f
     if( 0 != roundup_j % 16){
         roundup_j = (roundup_j/16+1) * 16;
     }
-    dp->m = (PREC_t *) aligned_alloc(16, sizeof(PREC_t *) * roundup_j);
+    dp->m = (PREC_t *) aligned_alloc(16, sizeof(PREC_t) * roundup_j);
     if( NULL == dp->m ){
         dprintf(2,"Err in init: ENOMEM for malloc %s:%d\n", file, line);
         exit(2);
@@ -206,9 +206,9 @@ void PREC_name(_matrix_load) (matrix_t* dp, const char * filename, const char* f
         //printf("D load main convert loop. m i:%d j:%d offset:%d, old_ii:%d, ii:%d ", i, j, i*dp->j + j, old_ii, ii);
         //printf("value:%f\n", atof(buff+old_ii));
 #ifdef ROWALIGN
-        dp->m[i][j] = atof(buff+old_ii);
+        dp->m[i][j] = (PREC_t) atof(buff+old_ii);
 #else
-        dp->m[i*dp->j+j] = atof(buff+old_ii);
+        dp->m[i*dp->j+j] = (PREC_t) atof(buff+old_ii);
 #endif
         if( j+1 == dp->j){
             i = i+1;
