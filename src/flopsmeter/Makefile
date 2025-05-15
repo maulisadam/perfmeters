@@ -21,11 +21,14 @@ matmul_test: matmul_test.o matmul.o
 matmul_test.o: matmul_test.c matmul.h
 	$(CC) -c -o matmul_test.o matmul_test.c $(CCFLAGS) -DUSE_RESTRICT
 
-opencl_matmul_test: opencl_matmul_test.o opencl_helper.o
-	$(CC) -o opencl_matmul_test opencl_matmul_test.o opencl_helper.o -lOpenCL
+opencl_matmul_test: opencl_matmul_test.o opencl_matmul.o opencl_helper.o matmul.o
+	$(CC) -o opencl_matmul_test opencl_matmul_test.o opencl_matmul.o opencl_helper.o matmul.o -lOpenCL -lpthread -lquadmath
 
 opencl_matmul_test.o: opencl_matmul_test.c opencl_helper.h
-	$(CC) -c -o opencl_matmul_test.o opencl_matmul_test.c  $(CCFLAGS) -DCL_TARGET_OPENCL_VERSION=220
+	$(CC) -c -o opencl_matmul_test.o opencl_matmul_test.c $(CCFLAGS) -DCL_TARGET_OPENCL_VERSION=220
+
+opencl_matmul.o: opencl_matmul.c opencl_matmul.h
+	$(CC) -c -o opencl_matmul.o opencl_matmul.c $(CCFLAGS) -DCL_TARGET_OPENCL_VERSION=220
 
 opencl_helper.o: opencl_helper.c opencl_helper.h
 	$(CC) -c -o opencl_helper.o opencl_helper.c $(CCFLAGS) -DCL_TARGET_OPENCL_VERSION=220
@@ -35,10 +38,13 @@ test: A.txt B.txt opencl_matmul_test matmul_test test/matmul_check.py
 	test/matmul_check.py A.txt B.txt C.txt
 	./matmul_test fp64 A.txt B.txt C.txt
 	test/matmul_check.py A.txt B.txt C.txt
+	./matmul_test fp80 A.txt B.txt C.txt
+	test/matmul_check.py A.txt B.txt C.txt
+	./matmul_test fp128 A.txt B.txt C.txt
+	test/matmul_check.py A.txt B.txt C.txt
 
 A.txt: test/matmul_gener.py
 	test/matmul_gener.py 1511 2003 2999
-
 
 clean:
 	rm -f *.o $(ALL) $(TESTFILES)
