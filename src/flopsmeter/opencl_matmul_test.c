@@ -20,13 +20,21 @@
 #include "opencl_helper.h"
 #include "opencl_matmul.h"
 
+/*
+** time differencial utility function: returns int (nanoseconds)
+*/
+static inline long int diff_timespec(const struct timespec *endtime, const struct timespec *begtime) {
+  return (endtime->tv_sec - begtime->tv_sec) * 1000000000L +
+            (endtime->tv_nsec - begtime->tv_nsec);
+}
+
 
 int main(int argc, const char * argv[])
 {
 
     // Data load part
-    dmatrix in1, in2, in2_t, out;
-    struct timespec begintime, endtime;
+    fmatrix in1, in2, in2_t, out;
+    struct timespec begintime, inittime, endtime;
     double flop;
 
     if( argc != 5){
@@ -39,18 +47,18 @@ int main(int argc, const char * argv[])
         return 2;
     }
 
-    if( 0 == strcmp(argv[1], "fp64")){
+    if( 0 == strcmp(argv[1], "fp32")){
 
-        dmatrix_load(&in1, argv[2]);
-        dmatrix_load(&in2, argv[3]);
-        dmatrix_init(&in2_t, in2.j, in2.i);
-        dmatrix_transpose(&in2, &in2_t);
+        fmatrix_load(&in1, argv[2]);
+        fmatrix_load(&in2, argv[3]);
+        fmatrix_init(&in2_t, in2.j, in2.i);
+        fmatrix_transpose(&in2, &in2_t);
         /* calculate flops*/
         flop = (double)in1.j * (double)in1.i * (double)in2.j  ;      /* multiplications */
         flop += ((double)in1.j -1) *  (double)in1.i * (double)in2.j; /* additions */
 
-        dmatrix_free(&in2);
-        dmatrix_init(&out, in1.i, in2_t.i);
+        fmatrix_free(&in2);
+        fmatrix_init(&out, in1.i, in2_t.i);
 
 
     } else {
@@ -97,19 +105,36 @@ int main(int argc, const char * argv[])
             err = clGetDeviceInfo(device_id_list[deviceindex], CL_DEVICE_NAME, 300, device_name, &device_name_len);
             opencl_assert(err, "clGetDeviceInfo(CL_DEVICE_NAME)");
             printf("        Device index:%u, id=%p name=%s\n", deviceindex, device_id_list[deviceindex], device_name);
+            {
+                cl_command_queue commands;
+                cl_program program;
 
-            clock_gettime(CLOCK_REALTIME, &begintime);
-            opencl_dmatmul_t(device_id_list[deviceindex], &in1, &in2_t, &out);
-            clock_gettime(CLOCK_REALTIME, &endtime);
-
+                clock_gettime(CLOCK_REALTIME, &begintime);
+                opencl_initialize_environment(device_id_list[deviceindex], &commands, &program);
+                clock_gettime(CLOCK_REALTIME, &inittime);
+                printf("Precision: %s, time_init:%f\n",
+                    argv[1],
+                    diff_timespec(&inittime, &begintime)/1000000000.0);
+                for(size_t loc1=1; loc1<40; loc1++){
+                    for(size_t loc2=1; loc2<40; loc2++){
+                        clock_gettime(CLOCK_REALTIME, &inittime);
+                        opencl_fmatmul_t(commands, program, loc1, loc2, &in1, &in2_t, &out);
+                        clock_gettime(CLOCK_REALTIME, &endtime);
+                        printf("  WG.shape: (%lu, %lu) time_matmul:%f Gflops:%f\n",
+                            loc1, loc2,
+                            diff_timespec(&endtime, &inittime)/1000000000.0,
+                            flop/diff_timespec(&endtime, &inittime));
+                    }
+                }
+            }
         }/* end for deviceindex */
 
     } /* end for platformindex */
 
-    dmatrix_save(&out, argv[4]);
-    dmatrix_free(&in1);
-    dmatrix_free(&in2_t);
-    dmatrix_free(&out);
+    fmatrix_save(&out, argv[4]);
+    fmatrix_free(&in1);
+    fmatrix_free(&in2_t);
+    fmatrix_free(&out);
     return 0;
 }
 
