@@ -29,42 +29,17 @@ static inline long int diff_timespec(const struct timespec *endtime, const struc
 }
 
 
-int main(int argc, const char * argv[])
+/*
+** in1,in2_t,out is either (fmatrix*) or (dmatrix*)
+**  (fmatrix*) when precision==32
+*/
+static void opencl_calling_part(int precision, void* in1, void*in2_t, void*out)
 {
-
-    // Data load part
-    fmatrix in1, in2, in2_t, out;
     struct timespec begintime, inittime, endtime;
     double flop;
-
-    if( argc != 5){
-        dprintf(2,"Usage: ./opencl_matmul_test PREC A B C\n");
-        dprintf(2,"\tDo the matrix multiplication where C = A x B");
-        dprintf(2,"\tPREC is one of the following: fp16, fp32, fp64, fp80, fp128\n");
-        dprintf(2,"\tA and B is existing files on format of numpy.savetxt()\n");
-        dprintf(2,"\tC will be same format.\n");
-
-        return 2;
-    }
-
-    if( 0 == strcmp(argv[1], "fp32")){
-
-        fmatrix_load(&in1, argv[2]);
-        fmatrix_load(&in2, argv[3]);
-        fmatrix_init(&in2_t, in2.j, in2.i);
-        fmatrix_transpose(&in2, &in2_t);
-        /* calculate flops*/
-        flop = (double)in1.j * (double)in1.i * (double)in2.j  ;      /* multiplications */
-        flop += ((double)in1.j -1) *  (double)in1.i * (double)in2.j; /* additions */
-
-        fmatrix_free(&in2);
-        fmatrix_init(&out, in1.i, in2_t.i);
-
-    } else {
-        dprintf(2,"Err: unknown PREC. Must be one of the following: fp64\n");
-        exit(2);
-    }
-
+    /* calculate flops*/
+    flop = (double)((fmatrix*)in1)->j * (double)((fmatrix*)in1)->i * (double)((fmatrix*)in2_t)->i;        /* multiplications */
+    flop += ((double)((fmatrix*)in1)->j -1) *  (double)((fmatrix*)in1)->i * (double)((fmatrix*)in2_t)->i; /* additions */
 
     // Opencl calling part
 
@@ -111,13 +86,17 @@ int main(int argc, const char * argv[])
                 clock_gettime(CLOCK_REALTIME, &begintime);
                 opencl_initialize_environment(device_id_list[deviceindex], &commands, &program);
                 clock_gettime(CLOCK_REALTIME, &inittime);
-                printf("Precision: %s, time_init:%f\n",
-                    argv[1],
+                printf("Precision: fp%d, time_init:%f\n",
+                    precision,
                     diff_timespec(&inittime, &begintime)/1000000000.0);
                 for(size_t loc1=2; loc1<40; loc1++){
                     for(size_t loc2=1; loc2<20; loc2++){
                         clock_gettime(CLOCK_REALTIME, &inittime);
-                        opencl_fmatmul_t(commands, program, loc1, loc2, &in1, &in2_t, &out);
+                        if( 32 == precision){
+                            opencl_fmatmul_t(commands, program, loc1, loc2, (fmatrix *)in1, (fmatrix *)in2_t, (fmatrix *)out);
+                        }else{
+                            opencl_dmatmul_t(commands, program, loc1, loc2, (dmatrix *)in1, (dmatrix *)in2_t, (dmatrix *)out);
+                        }
                         clock_gettime(CLOCK_REALTIME, &endtime);
                         printf("  WG.shape: (%lu, %lu) time_matmul:%f Gflops:%f\n",
                             loc1, loc2,
@@ -129,11 +108,62 @@ int main(int argc, const char * argv[])
         }/* end for deviceindex */
 
     } /* end for platformindex */
+}
 
-    fmatrix_save(&out, argv[4]);
-    fmatrix_free(&in1);
-    fmatrix_free(&in2_t);
-    fmatrix_free(&out);
+int main(int argc, const char * argv[])
+{
+
+    if( argc != 5){
+        dprintf(2,"Usage: ./opencl_matmul_test PREC A B C\n");
+        dprintf(2,"\tDo the matrix multiplication where C = A x B");
+        dprintf(2,"\tPREC is one of the following: fp16, fp32, fp64, fp80, fp128\n");
+        dprintf(2,"\tA and B is existing files on format of numpy.savetxt()\n");
+        dprintf(2,"\tC will be same format.\n");
+
+        return 2;
+    }
+
+    if( 0 == strcmp(argv[1], "fp32")){
+        fmatrix in1, in2, in2_t, out;
+
+        fmatrix_load(&in1, argv[2]);
+        fmatrix_load(&in2, argv[3]);
+        fmatrix_init(&in2_t, in2.j, in2.i);
+        fmatrix_transpose(&in2, &in2_t);
+
+        fmatrix_free(&in2);
+        fmatrix_init(&out, in1.i, in2_t.i);
+
+        opencl_calling_part(32, &in1, &in2_t, &out);
+
+        fmatrix_save(&out, argv[4]);
+        fmatrix_free(&in1);
+        fmatrix_free(&in2_t);
+        fmatrix_free(&out);
+    } else if( 0 == strcmp(argv[1], "fp64")){
+        dmatrix in1, in2, in2_t, out;
+
+        dmatrix_load(&in1, argv[2]);
+        dmatrix_load(&in2, argv[3]);
+        dmatrix_init(&in2_t, in2.j, in2.i);
+        dmatrix_transpose(&in2, &in2_t);
+
+        dmatrix_free(&in2);
+        dmatrix_init(&out, in1.i, in2_t.i);
+
+        opencl_calling_part(64, &in1, &in2_t, &out);
+
+        dmatrix_save(&out, argv[4]);
+        dmatrix_free(&in1);
+        dmatrix_free(&in2_t);
+        dmatrix_free(&out);
+    }else {
+        dprintf(2,"Err: unknown PREC. Must be one of the following: fp32 fp64\n");
+        exit(2);
+    }
+
+
+
     return 0;
 }
 
