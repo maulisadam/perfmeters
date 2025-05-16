@@ -60,7 +60,7 @@ int main(int argc, const char * argv[])
         hmatrix_free(&in2);
         hmatrix_init(&out, in1.i, in2_t.i);
         clock_gettime(CLOCK_REALTIME, &begintime);
-        hmatmul_t(&in1, &in2_t, &out(;
+        hmatmul_t(&in1, &in2_t, &out);
         clock_gettime(CLOCK_REALTIME, &endtime);
         hmatrix_save(&out, argv[4]);
         hmatrix_free(&in1);

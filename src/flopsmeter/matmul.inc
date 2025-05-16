@@ -40,7 +40,7 @@
 #   define SAVE_FMT "%.10e%s"
 #   define matrix_t fmatrix
 #elif PRECISION == 16
-#   define PREC_t _float16
+#   define PREC_t _Float16
 #   define PREC_name(x) h##x
 #   define SAVE_FMT "%.6e%s"
 #   define matrix_t hmatrix
@@ -339,7 +339,20 @@ void PREC_name(_matrix_save)(const matrix_t* dp, const char * savefile, const ch
         quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i*dp->j+j]);
 #endif
         fprintf(sfd, "%s\n", buff);
+#elif PRECISION==16
+        for(j=0; j< dp->j-1; ++j){
+#ifdef ROWALIGN
+            fprintf(sfd, SAVE_FMT, (double) dp->m[i][j], " ");
 #else
+            fprintf(sfd, SAVE_FMT, (double) dp->m[i*dp->j+j], " ");
+#endif
+        }
+#ifdef ROWALIGN
+        fprintf(sfd, SAVE_FMT, (double) dp->m[i][j], "\n");
+#else
+        fprintf(sfd, SAVE_FMT, (double) dp->m[i*dp->j+j], "\n");
+#endif
+#else // not a 128-bit nor a 16 bit precision
         for(j=0; j< dp->j-1; ++j){
 #ifdef ROWALIGN
             fprintf(sfd, SAVE_FMT, dp->m[i][j], " ");

@@ -198,9 +198,33 @@ int main(int argc, const char * argv[])
             flop/diff_timespec(&endtime, &inittime)
         );
     }
+#ifdef FLT16_MIN
+    {
+        hmatrix in1, in2, out;
+        clock_gettime(CLOCK_REALTIME, &begintime);
+        hmatrix_init(&in1, atoi(argv[1]), atoi(argv[2]));
+        hmatrix_init(&in2, atoi(argv[3]), atoi(argv[2])); /* random initialization as transposed */
+        hmatrix_init(&out, in1.i, in2.i );
+        hmatrix_random(&in1);
+        hmatrix_random(&in2);
+        clock_gettime(CLOCK_REALTIME, &inittime);
+        hmatmul_t(&in1, &in2, &out);
+        clock_gettime(CLOCK_REALTIME, &endtime);
+        hmatrix_free(&in1);
+        hmatrix_free(&in2);
+        hmatrix_free(&out);
+        printf("{\"timestamp\":%ld, \"n_X\":%d, \"n_Y\":%d, \"n_Z\":%d, \"dtype\":\"%s\", \"threadcount\":%d, \"device_type\":\"%s\", \"device\":\"%s\", \"time_init\":%f, \"time_matmul\":%f, \"Gflops\":%f}\n",
+            endtime.tv_sec,
+            atoi(argv[1]), atoi(argv[2]), atoi(argv[3]),
+            "fp16",
+            threadcnt,
+            "pthread-cpu",
+            get_cpu_model_name(),
+            diff_timespec(&inittime, &begintime)/1000000000.0,
+            diff_timespec(&endtime, &inittime)/1000000000.0,
+            flop/diff_timespec(&endtime, &inittime)
+        );
+    }
+#endif
 
-    /*
-    dmatrix_save(&out2, argv[3]);
-    clock_gettime(CLOCK_REALTIME, &endtime);
-    */
 }/* end of main */

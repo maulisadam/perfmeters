@@ -123,7 +123,7 @@ void f_matrix_save(const fmatrix* dp, const char * savefile, const char * file, 
 void f_matmul_t(fmatrix* _RESTRICT in1, fmatrix* _RESTRICT in2, fmatrix* _RESTRICT out, const char * file, const int line);
 
 #ifdef FLT16_MIN
-typedef struct { __float16 POINTERTYPE _RESTRICT m; uint32_t i, j; uint32_t magic; } hmatrix;
+typedef struct { _Float16 POINTERTYPE _RESTRICT m; uint32_t i, j; uint32_t magic; } hmatrix;
 #   define hmatrix_init(a,b,c)    h_matrix_init(a,b,c, __FILE__, __LINE__)
 #   define hmatrix_load(a,b)      h_matrix_load(a,b, __FILE__, __LINE__)
 #   define hmatrix_free(a)        h_matrix_free(a, __FILE__, __LINE__)
