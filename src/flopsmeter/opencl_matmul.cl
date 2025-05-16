@@ -8,28 +8,14 @@
 **
 */
 
-__kernel void fmatmul_t(
-    __global double* in1,  /* matrix, shape=(I,Y) */ 
-    __global double* in2,  /* matrix, shape=(J,Y) */
-    __global double* out,  /* matrix, shape=(I,J) */
-    const int I,
-    const int J, 
-    const int Y)
-{
-    int yy;
-    double retval;
-    int ii = get_global_id(0);
-    int jj = get_global_id(1);
-    __global double * rowpointer1 = in1 + ii*Y;
-    __global double * rowpointer2 = in2 + jj*Y;
+#define PREC_name(a) d##a
+#define PREC_t double
+#include "opencl_matmul.cl.inc"
+#undef PREC_name
+#undef PREC_t
+#define PREC_name(a) f##a
+#define PREC_t float
+#include "opencl_matmul.cl.inc"
 
-    if( ii < I && jj < J){
-        retval = rowpointer1[0] * rowpointer2[0];
-        for(yy=1; yy < Y; yy++){
-            retval += rowpointer1[yy] * rowpointer2[yy];
-        }
-        out[ii * J + jj] = retval;
-    }
-}
 
 /* vim: set filetype=c : */

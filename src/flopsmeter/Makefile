@@ -27,7 +27,7 @@ opencl_matmul_test: opencl_matmul_test.o opencl_matmul.o opencl_helper.o matmul.
 opencl_matmul_test.o: opencl_matmul_test.c opencl_helper.h
 	$(CC) -c -o opencl_matmul_test.o opencl_matmul_test.c $(CCFLAGS) -DCL_TARGET_OPENCL_VERSION=220
 
-opencl_matmul.o: opencl_matmul.c opencl_matmul.h
+opencl_matmul.o: opencl_matmul.c opencl_matmul.inc opencl_matmul.h opencl_matmul.cl opencl_matmul.cl.inc
 	$(CC) -c -o opencl_matmul.o opencl_matmul.c $(CCFLAGS) -DCL_TARGET_OPENCL_VERSION=220
 
 opencl_helper.o: opencl_helper.c opencl_helper.h
