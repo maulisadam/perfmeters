@@ -94,7 +94,7 @@ void opencl_initialize_environment(
             program,        // cl_program program,
             1,              // cl_uint num_devices,
             &device_id,     // const cl_device_id* device_list,
-            NULL,           // const char* options, like command line options for gcc, like "-I /tmp -DFOOBAR" 
+            NULL,           // const char* options, like command line options for gcc, like "-I /tmp -DFOOBAR"
             NULL,           // pointer of a callback routine for assync build
             NULL);          // void*,  parameter for callback routine
     if (errval != CL_SUCCESS)

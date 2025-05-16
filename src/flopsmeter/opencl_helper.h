@@ -1,7 +1,7 @@
 /*
 ** opencl_helper.h
 **
-** copyright by Maulis, Adam 2025 by terms of AGPL v3 or newer 
+** copyright by Maulis, Adam 2025 by terms of AGPL v3 or newer
 */
 
 #ifndef _OPENCL_HELPER_H

@@ -60,7 +60,6 @@ int main(int argc, const char * argv[])
         fmatrix_free(&in2);
         fmatrix_init(&out, in1.i, in2_t.i);
 
-
     } else {
         dprintf(2,"Err: unknown PREC. Must be one of the following: fp64\n");
         exit(2);
@@ -115,8 +114,8 @@ int main(int argc, const char * argv[])
                 printf("Precision: %s, time_init:%f\n",
                     argv[1],
                     diff_timespec(&inittime, &begintime)/1000000000.0);
-                for(size_t loc1=1; loc1<40; loc1++){
-                    for(size_t loc2=1; loc2<40; loc2++){
+                for(size_t loc1=2; loc1<40; loc1++){
+                    for(size_t loc2=1; loc2<20; loc2++){
                         clock_gettime(CLOCK_REALTIME, &inittime);
                         opencl_fmatmul_t(commands, program, loc1, loc2, &in1, &in2_t, &out);
                         clock_gettime(CLOCK_REALTIME, &endtime);

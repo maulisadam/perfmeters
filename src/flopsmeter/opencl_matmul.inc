@@ -62,10 +62,10 @@ void PREC_name(_opencl_matmul_t)(
     // EnqueueNDRangeKernel optimizations
     errval = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &work_group_size, NULL);
     opencl_assert(errval, "clGetKernelWorkGroupInfo(CL_KERNEL_WORK_GROUP_SIZE)");
-    printf("   maximum work group size: %lu\n", work_group_size);
+    //printf("   maximum work group size: %lu\n", work_group_size);
     errval = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(size_t), &work_group_multiplier_hint, NULL);
     opencl_assert(errval, "clGetKernelWorkGroupInfo(CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE)");
-    printf("   work group multiplier hint: %lu\n", work_group_multiplier_hint);
+    //printf("   work group multiplier hint: %lu\n", work_group_multiplier_hint);
 
     // We have 2d data set
     // 1) global_sizes must be greater than I,J
@@ -92,15 +92,17 @@ void PREC_name(_opencl_matmul_t)(
         local_sizes[0] = loc1;
         local_sizes[1] = loc2;
     }
-    global_sizes[0] = roundup(in1->i, local_sizes[0]); // I
-    global_sizes[1] = roundup(in2->i, local_sizes[1]); // J
+
     if( local_sizes[0] * local_sizes[1] > work_group_size){
         printf("   Given workgroup (%lu, %lu ) is greather than %lu do nothing\n", local_sizes[0], local_sizes[1], work_group_size);
         return ;
     }
-    printf("   Choosed local sizes: (%lu, %lu)\n", local_sizes[0], local_sizes[1]);
-    printf("   Choosed global sizes: (%lu, %lu)\n", global_sizes[0], global_sizes[1]);
 
+    //printf("   Choosed local sizes: (%lu, %lu)\n", local_sizes[0], local_sizes[1]);
+    /* per-dimensional roundup*/
+    global_sizes[0] = roundup(in1->i, local_sizes[0]); // I
+    global_sizes[1] = roundup(in2->i, local_sizes[1]); // J
+    //printf("   Choosed global sizes: (%lu, %lu)\n", global_sizes[0], global_sizes[1]);
 
     // Create buffers in device memory. Also copy in immediatly
     in1_mem = clCreateBuffer(context,  CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,  sizeof(PREC_t) * in1->i * in1->j, in1->m, &errval);
@@ -147,7 +149,7 @@ void PREC_name(_opencl_matmul_t)(
     // Read back the results from the device to verify the output
     errval = clEnqueueReadBuffer(
             commands,
-            out_mem, 
+            out_mem,
             CL_TRUE,        // blocking read. This calls an implicit clFinish
             0,              // offset
             sizeof(PREC_t) * out->i * out->j,
@@ -162,3 +164,4 @@ void PREC_name(_opencl_matmul_t)(
 
 } /* end of opencl_matmul_t */
 
+/* vim: set filetype=c : */

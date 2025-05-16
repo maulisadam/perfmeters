@@ -10,7 +10,7 @@
 
 
 __kernel void PREC_name(matmul_t)(
-    __global PREC_t* in1,  /* matrix, shape=(I,Y) */ 
+    __global PREC_t* in1,  /* matrix, shape=(I,Y) */
     __global PREC_t* in2,  /* matrix, shape=(J,Y) */
     __global PREC_t* out,  /* matrix, shape=(I,J) */
     const unsigned int I,
