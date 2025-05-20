@@ -21,6 +21,12 @@
 #include <pthread.h>
 #include <quadmath.h>
 
+// example for modulo 5: 0->0; 1->5; 4->5; 5->5; 6->10
+__attribute__ ((const)) static inline size_t roundup(size_t what, size_t modulo) // const means side effect-free
+{
+    return what + (modulo - what % modulo) % modulo;
+}
+
 
 #define PRECISION 128
 #include "matmul.inc"

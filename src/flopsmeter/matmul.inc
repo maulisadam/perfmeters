@@ -59,12 +59,6 @@ void PREC_name(matrix_assert) (const matrix_t* _RESTRICT dp, const char * msg, c
         dprintf(2,"Err in %s : null matrix %s:%d\n", msg, file, line);
         exit(2);
     }
-#ifdef ROWALIGN
-    if( NULL == dp->m[0] ){
-        dprintf(2,"Err in %s : null matrix row %s:%d\n", msg, file, line);
-        exit(2);
-    }
-#endif
     if( MATRIX_MAGIC != dp->magic ){
         dprintf(2,"Err in %s : wrong magic matrix %s:%d\n", msg, file, line);
         exit(2);
@@ -91,7 +85,7 @@ static inline void PREC_name(matrix_init_assert)(const matrix_t* _RESTRICT dp, c
 
 void PREC_name(_matrix_init)(matrix_t* dp, uint32_t i, uint32_t j, const char* file, const int line)
 {
-    uint32_t roundup_j;
+    uint32_t roundup_all;
 
     PREC_name(matrix_init_assert)(dp, "init", file, line);
 
@@ -99,31 +93,23 @@ void PREC_name(_matrix_init)(matrix_t* dp, uint32_t i, uint32_t j, const char* f
         dprintf(2,"Err in init: invalid matrix_shape:(%u, %u) %s:%d\n", i,j, file, line);
         exit(2);
     }
-#ifdef ROWALIGN
-    dp->m = (PREC_t **) malloc( sizeof(PREC_t *) * i);
+#ifdef ROWPADDING
+    uint32_t roundup_j = roundup(j, ROWPADDING); // j is the length of the row
+    roundup_all = i * roundup_j;
+    dp->m = (PREC_t *) aligned_alloc(ROWPADDING, sizeof(PREC_t) * roundup_all);
     if( NULL == dp->m ){
         dprintf(2,"Err in init: ENOMEM for malloc %s:%d\n", file, line);
         exit(2);
     }
-
-    roundup_j = j;
-    if( 0 != (j % ROWALIGN)){
-        roundup_j = (j/ROWALIGN +1) * ROWALIGN;
-    }
-
-    for(uint32_t ii=0; ii<i; ii++){
-        dp->m[ii] = (PREC_t *) aligned_alloc(ROWALIGN, sizeof(PREC_t) * roundup_j);
-        if( NULL == dp->m[ii] ){
-            dprintf(2,"Err in init: ENOMEM for row malloc %s:%d\n", file, line);
-            exit(2);
+    // must fill with 0 the padded area
+    for( uint32_t ii=0; ii<i; ii++){
+        for(uint32_t jj=j; jj<roundup_j; jj++){
+            dp->m[ii*roundup_j+jj] = (PREC_t) 0.0;
         }
     }
 #else
-    roundup_j = i*j;
-    if( 0 != roundup_j % 16){
-        roundup_j = (roundup_j/16+1) * 16;
-    }
-    dp->m = (PREC_t *) aligned_alloc(16, sizeof(PREC_t) * roundup_j);
+    roundup_all = roundup(i*j, 16);  // always do a minimal align
+    dp->m = (PREC_t *) aligned_alloc(16, sizeof(PREC_t) * roundup_all);
     if( NULL == dp->m ){
         dprintf(2,"Err in init: ENOMEM for malloc %s:%d\n", file, line);
         exit(2);
@@ -205,8 +191,8 @@ void PREC_name(_matrix_load) (matrix_t* dp, const char * filename, const char* f
         }
         //printf("D load main convert loop. m i:%d j:%d offset:%d, old_ii:%d, ii:%d ", i, j, i*dp->j + j, old_ii, ii);
         //printf("value:%f\n", atof(buff+old_ii));
-#ifdef ROWALIGN
-        dp->m[i][j] = (PREC_t) atof(buff+old_ii);
+#ifdef ROWPADDING
+        dp->m[i * roundup(dp->j, ROWPADDING) + j] = (PREC_t) atof(buff+old_ii);
 #else
         dp->m[i*dp->j+j] = (PREC_t) atof(buff+old_ii);
 #endif
@@ -227,12 +213,6 @@ void PREC_name(_matrix_free)(matrix_t* dp, const char* file, const int line)
 {
 
     PREC_name(matrix_assert)(dp, "free", file, line);
-#ifdef ROWALIGN
-    for(uint32_t ii=0; ii<dp->i; ii++){
-        free(dp->m[ii]);
-        dp->m[ii]=NULL;
-    }
-#endif
     free(dp->m);
     dp->m = NULL;
     dp->i = 0;
@@ -250,8 +230,8 @@ void PREC_name(_matrix_random)(matrix_t* dp,  const char * file, const int line)
 
     for(ii=0; ii < dp->i; ii++){
         for(jj=0; jj < dp->j; ++jj){
-#ifdef ROWALIGN
-            dp->m[ii][jj] = drand48();
+#ifdef ROWPADDING
+            dp->m[ii*roundup(dp->j,ROWPADDING)+jj] = drand48();
             //dp->m[ii][jj] = ii+jj+1;
 #else
             dp->m[ii*dp->j+jj] = drand48();
@@ -277,8 +257,8 @@ void PREC_name(_matrix_transpose)(const matrix_t* in, matrix_t* out,  const char
 
     for(ii=0; ii < in->i; ++ii){
         for(jj=0; jj < in->j; ++jj){
-#ifdef ROWALIGN
-            out->m[jj][ii] = in->m[ii][jj];
+#ifdef ROWPADDING
+            out->m[jj* roundup(out->j,ROWPADDING) + ii] = in->m[ii * roundup(in->j, ROWPADDING) + jj];
 #else
             out->m[jj*out->j + ii] = in->m[ii*in->j + jj];
 #endif
@@ -295,8 +275,8 @@ void PREC_name(_matrix_print)(const matrix_t* dp, const char * file, const int l
     for(i=0; i< dp->i; ++i){
         for(j=0; j< dp->j; ++j){
             printf("%.5f",
-#ifdef ROWALIGN
-                (double)dp->m[i][j]
+#ifdef ROWPADDING
+                (double)dp->m[i*roundup(dp->j, ROWPADDING) + j]
 #else
                 (double)dp->m[i*dp->j+j]
 #endif
@@ -326,42 +306,42 @@ void PREC_name(_matrix_save)(const matrix_t* dp, const char * savefile, const ch
     for(i=0; i< dp->i; ++i){
 #if PRECISION==128
         for(j=0; j< dp->j-1; ++j){
-#ifdef ROWALIGN
-            quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i][j]);
+#ifdef ROWPADDING
+            quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i*roundup(dp->j, ROWPADDING)+j]);
 #else
             quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i*dp->j+j]);
 #endif
             fprintf(sfd, "%s ", buff);
         }
-#ifdef ROWALIGN
-        quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i][j]);
+#ifdef ROWPADDING
+        quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i*roundup(dp->j, ROWPADDING)+j]);
 #else
         quadmath_snprintf(buff, 300, SAVE_FMT, dp->m[i*dp->j+j]);
 #endif
         fprintf(sfd, "%s\n", buff);
 #elif PRECISION==16
         for(j=0; j< dp->j-1; ++j){
-#ifdef ROWALIGN
-            fprintf(sfd, SAVE_FMT, (double) dp->m[i][j], " ");
+#ifdef ROWPADDING
+            fprintf(sfd, SAVE_FMT, (double) dp->m[i*roundup(dp->j, ROWPADDING)+j], " ");
 #else
             fprintf(sfd, SAVE_FMT, (double) dp->m[i*dp->j+j], " ");
 #endif
         }
-#ifdef ROWALIGN
-        fprintf(sfd, SAVE_FMT, (double) dp->m[i][j], "\n");
+#ifdef ROWPADDING
+        fprintf(sfd, SAVE_FMT, (double) dp->m[i*roundup(dp->j, ROWPADDING)+j], "\n");
 #else
         fprintf(sfd, SAVE_FMT, (double) dp->m[i*dp->j+j], "\n");
 #endif
 #else // not a 128-bit nor a 16 bit precision
         for(j=0; j< dp->j-1; ++j){
-#ifdef ROWALIGN
-            fprintf(sfd, SAVE_FMT, dp->m[i][j], " ");
+#ifdef ROWPADDING
+            fprintf(sfd, SAVE_FMT, dp->m[i*roundup(dp->j, ROWPADDING)+j], " ");
 #else
             fprintf(sfd, SAVE_FMT, dp->m[i*dp->j+j], " ");
 #endif
         }
-#ifdef ROWALIGN
-        fprintf(sfd, SAVE_FMT, dp->m[i][j], "\n");
+#ifdef ROWPADDING
+        fprintf(sfd, SAVE_FMT, dp->m[i*roundup(dp->j, ROWPADDING)+j], "\n");
 #else
         fprintf(sfd, SAVE_FMT, dp->m[i*dp->j+j], "\n");
 #endif
@@ -376,6 +356,9 @@ void PREC_name(_matrix_save)(const matrix_t* dp, const char * savefile, const ch
     Requires a second matrix as transposed.
     multithreaded
 ********************************************************************/
+
+// and here the heavy optimized one: https://stackoverflow.com/questions/59494745/avx2-computing-dot-product-of-512-float-arrays
+// my worth a try
 
 /* this seems faster than cblas_ddot() */
 static inline PREC_t PREC_name(vector_dot)(const PREC_t * _RESTRICT v1, const PREC_t * _RESTRICT v2, const uint32_t len)
@@ -407,25 +390,25 @@ static inline void PREC_name(_matmul_t_sub)(
         const uint32_t from,
         const uint32_t to)
 {
-    uint32_t oi, oj;
+    register uint32_t oi, oj, paddedj1, paddedj2, paddedjo;
     PREC_t * _RESTRICT rowpointer1;
     PREC_t * _RESTRICT rowpointer2;
 
+#if ROWPADDING
+    paddedj1 = roundup(in1->j,ROWPADDING);
+    paddedj2 = roundup(in2->j,ROWPADDING);
+    paddedjo = roundup(out->j,ROWPADDING);
+#else
+    paddedj1 = in1->j;
+    paddedj2 = in2->j;
+    paddedjo = out->j;
+#endif
+
     for(oi=from; oi < to; oi++){
-#if ROWALIGN
-        rowpointer1 = in1->m[oi];
-#else
-        rowpointer1 = in1->m + (oi*in1->j);
-#endif
+        rowpointer1 = in1->m + (oi*paddedj1);
         for(oj=0; oj<out->j; oj++){
-#ifdef ROWALIGN
-            rowpointer2 = in2->m[oj];
-            out->m[oi][oj] =
-#else
-            rowpointer2 = in2->m+ (oj*in2->j);
-            out->m[oi*out->j+oj] =
-#endif
-                PREC_name(vector_dot)(rowpointer1, rowpointer2, in1->j);
+            rowpointer2 = in2->m + (oj*paddedj2);
+            out->m[oi*paddedjo+oj] = PREC_name(vector_dot)(rowpointer1, rowpointer2, in1->j);
         }
     }
 }

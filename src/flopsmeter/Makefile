@@ -1,5 +1,5 @@
 .PHONY: clean all test
-CCFLAGS = -O4 -Wall -Wextra -march=native -ffast-math
+CCFLAGS = -O4 -Wall -Wextra -march=native -ffast-math -DROWPADDING=32
 CC = gcc
 ALL = flopsmeter opencl_matmul_test matmul_test
 TESTFILES = A.txt B.txt C.txt

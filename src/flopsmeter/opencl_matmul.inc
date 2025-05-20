@@ -105,12 +105,21 @@ void PREC_name(_opencl_matmul_t)(
     //printf("   Choosed global sizes: (%lu, %lu)\n", global_sizes[0], global_sizes[1]);
 
     // Create buffers in device memory. Also copy in immediatly
+#ifdef ROWPADDING
+    in1_mem = clCreateBuffer(context,  CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,  sizeof(PREC_t) * in1->i * roundup(in1->j, ROWPADDING), in1->m, &errval);
+    opencl_assert(errval, "clCreateBuffer(in1)");
+    in2_mem = clCreateBuffer(context,  CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,  sizeof(PREC_t) * in2->i * roundup(in2->j, ROWPADDING), in2->m, &errval);
+    opencl_assert(errval, "clCreateBuffer(in2)");
+    out_mem = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(PREC_t) * out->i * roundup(out->j, ROWPADDING), NULL, &errval);
+    opencl_assert(errval, "clCreateBuffer(out)");
+#else
     in1_mem = clCreateBuffer(context,  CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,  sizeof(PREC_t) * in1->i * in1->j, in1->m, &errval);
     opencl_assert(errval, "clCreateBuffer(in1)");
     in2_mem = clCreateBuffer(context,  CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,  sizeof(PREC_t) * in2->i * in2->j, in2->m, &errval);
     opencl_assert(errval, "clCreateBuffer(in2)");
     out_mem = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(PREC_t) * out->i * out->j, NULL, &errval);
     opencl_assert(errval, "clCreateBuffer(out)");
+#endif
 
     // set kernel args
     errval = clSetKernelArg(kernel, 0, sizeof(cl_mem), &in1_mem);
@@ -125,6 +134,16 @@ void PREC_name(_opencl_matmul_t)(
     opencl_assert(errval, "clSetKernelArg(4=J)");
     errval = clSetKernelArg(kernel, 5, sizeof(uint32_t), &(in1->j));
     opencl_assert(errval, "clSetKernelArg(5=Y)");
+#ifdef ROWPADDING
+    {
+        uint32_t roundup_j = roundup(in2->i, ROWPADDING);
+        uint32_t roundup_y = roundup(in1->j, ROWPADDING);
+        errval = clSetKernelArg(kernel, 6, sizeof(uint32_t), &(roundup_j));
+        opencl_assert(errval, "clSetKernelArg(6=Jroundup");
+        errval = clSetKernelArg(kernel, 7, sizeof(uint32_t), &(roundup_y));
+        opencl_assert(errval, "clSetKernelArg(7=Yroundup");
+    }
+#endif
 
 
     errval = clEnqueueNDRangeKernel(
@@ -152,7 +171,11 @@ void PREC_name(_opencl_matmul_t)(
             out_mem,
             CL_TRUE,        // blocking read. This calls an implicit clFinish
             0,              // offset
+#ifdef ROWPADDING
+            sizeof(PREC_t) * out->i * roundup(out->j, ROWPADDING),
+#else
             sizeof(PREC_t) * out->i * out->j,
+#endif
             out->m,
             0, NULL, NULL); // events parameters: we are not event-based
     opencl_assert(errval, "clEnqueueReadBuffer");
