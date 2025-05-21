@@ -94,7 +94,7 @@ void PREC_name(_opencl_matmul_t)(
     }
 
     if( local_sizes[0] * local_sizes[1] > work_group_size){
-        printf("   Given workgroup (%lu, %lu ) is greather than %lu do nothing\n", local_sizes[0], local_sizes[1], work_group_size);
+        //printf("   Given workgroup (%lu, %lu ) is greather than %lu do nothing\n", local_sizes[0], local_sizes[1], work_group_size);
         return ;
     }
 

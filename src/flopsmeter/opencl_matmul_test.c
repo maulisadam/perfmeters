@@ -59,11 +59,11 @@ static void opencl_calling_part(int precision, void* in1, void*in2_t, void*out)
     // get all platforms and devices
     err = clGetPlatformIDs(30, platform_id_list, &platform_id_list_len);
     opencl_assert(err, "clGetPlatformIDs");
-    printf("This system has %u OpenCL platforms\n", platform_id_list_len);
+    printf("#This system has %u OpenCL platforms\n", platform_id_list_len);
     for(cl_uint platformindex=0; platformindex < platform_id_list_len; platformindex++){
         err = clGetPlatformInfo(platform_id_list[platformindex], CL_PLATFORM_NAME, 300, platform_name, &platform_name_len);
         opencl_assert(err, "clGetPlatformInfo)CL_PLATFORM_NAME)");
-        printf("    Platform index:%u, id=%p name=%s\n", platformindex, platform_id_list[platformindex], platform_name);
+        printf("#    Platform index:%u, id=%p name=%s\n", platformindex, platform_id_list[platformindex], platform_name);
 
         err = clGetDeviceIDs(
             platform_id_list[platformindex], // cl_platform_id platform, platform refers to the platform ID returned by clGetPlatformIDs
@@ -74,11 +74,11 @@ static void opencl_calling_part(int precision, void* in1, void*in2_t, void*out)
             &device_id_list_len // cl_uint* num_devices
             );
         opencl_assert(err, "clGetDeviceIDs");
-        printf("    This platform has %u OpenCL devices\n", device_id_list_len);
+        printf("#    This platform has %u OpenCL devices\n", device_id_list_len);
         for(cl_uint deviceindex=0; deviceindex<device_id_list_len;  deviceindex++){
             err = clGetDeviceInfo(device_id_list[deviceindex], CL_DEVICE_NAME, 300, device_name, &device_name_len);
             opencl_assert(err, "clGetDeviceInfo(CL_DEVICE_NAME)");
-            printf("        Device index:%u, id=%p name=%s\n", deviceindex, device_id_list[deviceindex], device_name);
+            printf("#        Device index:%u, id=%p name=%s\n", deviceindex, device_id_list[deviceindex], device_name);
             {
                 cl_command_queue commands;
                 cl_program program;
@@ -86,11 +86,13 @@ static void opencl_calling_part(int precision, void* in1, void*in2_t, void*out)
                 clock_gettime(CLOCK_REALTIME, &begintime);
                 opencl_initialize_environment(device_id_list[deviceindex], &commands, &program);
                 clock_gettime(CLOCK_REALTIME, &inittime);
-                printf("Precision: fp%d, time_init:%f\n",
+                printf("# Precision: fp%d, time_init:%f, total_flop:%f\n",
                     precision,
-                    diff_timespec(&inittime, &begintime)/1000000000.0);
-                for(size_t loc1=2; loc1<40; loc1++){
-                    for(size_t loc2=1; loc2<20; loc2++){
+                    diff_timespec(&inittime, &begintime)/1000000000.0,
+                    flop);
+                printf("localsize0 localsize1 time_matmul Gflops\n");
+                for(size_t loc1=1; loc1<65; loc1++){
+                    for(size_t loc2=1; loc2<65; loc2++){
                         clock_gettime(CLOCK_REALTIME, &inittime);
                         if( 32 == precision){
                             opencl_fmatmul_t(commands, program, loc1, loc2, (fmatrix *)in1, (fmatrix *)in2_t, (fmatrix *)out);
@@ -98,10 +100,12 @@ static void opencl_calling_part(int precision, void* in1, void*in2_t, void*out)
                             opencl_dmatmul_t(commands, program, loc1, loc2, (dmatrix *)in1, (dmatrix *)in2_t, (dmatrix *)out);
                         }
                         clock_gettime(CLOCK_REALTIME, &endtime);
-                        printf("  WG.shape: (%lu, %lu) time_matmul:%f Gflops:%f\n",
-                            loc1, loc2,
-                            diff_timespec(&endtime, &inittime)/1000000000.0,
-                            flop/diff_timespec(&endtime, &inittime));
+                        if( diff_timespec(&endtime, &inittime) > 1000000){ // msec
+                            printf("%lu %lu %f %f\n",
+                                loc1, loc2,
+                                diff_timespec(&endtime, &inittime)/1000000000.0,
+                                flop/diff_timespec(&endtime, &inittime));
+                        }
                     }
                 }
             }
