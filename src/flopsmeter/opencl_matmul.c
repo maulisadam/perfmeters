@@ -104,10 +104,18 @@ void opencl_initialize_environment(
     if (errval != CL_SUCCESS)
     {
         size_t len;
-        char buffer[5099]; // meaningless but unique prime as usual
+        char * buffer;
 
-        printf("Error in clBuildProgram. Build LOG:\n");
-        errval = clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+        printf("Error in clBuildProgram. Error:%s\n", opencl_GetErrorString(errval));
+        printf("Build LOG:\n");
+        errval = clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
+        opencl_assert(errval, "clGetProgramBuildInfo(CL_PROGRAM_BUILD_LOG-len)");
+        buffer = (char  *)malloc(len);
+        if( NULL == buffer){
+            dprintf(2, "Error allocating memory to print the log of the failed build.\n");
+            exit(2);
+        }
+        errval = clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
         opencl_assert(errval, "clGetProgramBuildInfo(CL_PROGRAM_BUILD_LOG)");
         puts(buffer);
         exit(2);
