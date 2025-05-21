@@ -100,7 +100,7 @@ static void opencl_calling_part(int precision, void* in1, void*in2_t, void*out)
                             opencl_dmatmul_t(commands, program, loc1, loc2, (dmatrix *)in1, (dmatrix *)in2_t, (dmatrix *)out);
                         }
                         clock_gettime(CLOCK_REALTIME, &endtime);
-                        if( diff_timespec(&endtime, &inittime) > 1000000){ // msec
+                        if( diff_timespec(&endtime, &inittime) > 100000){ // 0.1 msec
                             printf("%lu %lu %f %f\n",
                                 loc1, loc2,
                                 diff_timespec(&endtime, &inittime)/1000000000.0,
