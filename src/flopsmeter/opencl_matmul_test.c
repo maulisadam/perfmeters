@@ -107,7 +107,7 @@ static void opencl_calling_part(int precision, void* in1, void*in2_t, void*out)
                                 flop/diff_timespec(&endtime, &inittime));
                         }
                     }
-                }
+                }/* end for loc1 */
             }
         }/* end for deviceindex */
 

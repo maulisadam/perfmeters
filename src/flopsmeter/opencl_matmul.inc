@@ -133,15 +133,15 @@ void PREC_name(_opencl_matmul_t)(
     errval = clSetKernelArg(kernel, 4, sizeof(uint32_t), &(in2->i));
     opencl_assert(errval, "clSetKernelArg(4=J)");
     errval = clSetKernelArg(kernel, 5, sizeof(uint32_t), &(in1->j));
-    opencl_assert(errval, "clSetKernelArg(5=Y)");
+    opencl_assert(errval, "clSetKernelArg(5=K)");
 #ifdef ROWPADDING
     {
         uint32_t roundup_j = roundup(in2->i, ROWPADDING);
-        uint32_t roundup_y = roundup(in1->j, ROWPADDING);
+        uint32_t roundup_k = roundup(in1->j, ROWPADDING);
         errval = clSetKernelArg(kernel, 6, sizeof(uint32_t), &(roundup_j));
         opencl_assert(errval, "clSetKernelArg(6=Jroundup");
-        errval = clSetKernelArg(kernel, 7, sizeof(uint32_t), &(roundup_y));
-        opencl_assert(errval, "clSetKernelArg(7=Yroundup");
+        errval = clSetKernelArg(kernel, 7, sizeof(uint32_t), &(roundup_k));
+        opencl_assert(errval, "clSetKernelArg(7=Kroundup");
     }
 #endif
 

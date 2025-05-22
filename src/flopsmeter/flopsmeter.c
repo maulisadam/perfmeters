@@ -96,10 +96,10 @@ int main(int argc, const char * argv[])
 
 
     if( argc != 4){
-        dprintf(2,"Usage: ./flopsmeter n_X n_Y n_Z\n");
+        dprintf(2,"Usage: ./flopsmeter I J K\n");
         dprintf(2,"\tMeasure the Flops performance via matrix multiplication: R = M1 x M2");
-        dprintf(2,"\tn_X n_Y n_Z are integers, the shape of the matricies:\n");
-        dprintf(2,"\tM1 is (n_X, n_Y), M2 is (n_Y, n_Z), R is (n_X, n_Z)\n");
+        dprintf(2,"\tI, J, K are integers, the shape of the matricies:\n");
+        dprintf(2,"\tM1 is (I, K), M2 is (K, J), R is (I, J)\n");
         return 2;
     }
 
