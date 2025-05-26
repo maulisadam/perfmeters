@@ -1,7 +1,7 @@
 .PHONY: clean all test
 CCFLAGS = -O4 -Wall -Wextra -march=native -ffast-math -DROWPADDING=32
 CC = gcc
-ALL = flopsmeter opencl_matmul_test matmul_test
+ALL = flopsmeter opencl_matmul_test matmul_test gener_tiling_test
 TESTFILES = A.txt B.txt C.txt
 
 all: $(ALL)
@@ -32,6 +32,16 @@ opencl_matmul.o: opencl_matmul.c opencl_matmul.inc opencl_matmul.h opencl_matmul
 
 opencl_helper.o: opencl_helper.c opencl_helper.h
 	$(CC) -c -o opencl_helper.o opencl_helper.c $(CCFLAGS) -DCL_TARGET_OPENCL_VERSION=220
+
+gener_tiling.o: gener_tiling.c gener_tiling.h
+	$(CC) -c -o gener_tiling.o gener_tiling.c $(CCFLAGS)
+
+gener_tiling_test.o: gener_tiling_test.c
+	$(CC) -c -o gener_tiling_test.o gener_tiling_test.c $(CCFLAGS)
+
+gener_tiling_test: gener_tiling.o gener_tiling_test.o
+	$(CC) -o gener_tiling_test gener_tiling_test.o gener_tiling.o -lm
+
 
 test: A.txt B.txt opencl_matmul_test matmul_test test/matmul_check.py
 	./matmul_test fp32 A.txt B.txt C.txt
