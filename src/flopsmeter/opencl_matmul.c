@@ -123,7 +123,9 @@ void opencl_initialize_environment(
     }
 
     // Create a command Q
-    commands = clCreateCommandQueue(context, device_id, 0, &errval);
+    // v1.2 commands = clCreateCommandQueue(context, device_id, 0, &errval);
+    commands = clCreateCommandQueueWithProperties(context, device_id, NULL, &errval);   // v2.0
+
     opencl_assert(errval, "clCreateCommandQueue");
 
     *commandq_out = commands;
