@@ -32,7 +32,7 @@ int main(void)
 
     retval = gener_tiling_init( &mystate, matrix_size, K, cachesize, granularity);
     printf("First retval%d \n", retval);
-    
+
     for(retval = gener_tiling_next( &mystate, offset, tilesize); retval != 0; retval = gener_tiling_next( &mystate, offset, tilesize)){
         printf("Loop: offset:(%lu, %lu) tilesize:(%lu, %lu)\n", offset[0], offset[1], tilesize[0], tilesize[1]);
     } /* end for gener_tiling_next() */

@@ -21,8 +21,8 @@ matmul_test: matmul_test.o matmul.o
 matmul_test.o: matmul_test.c matmul.h
 	$(CC) -c -o matmul_test.o matmul_test.c $(CCFLAGS) -DUSE_RESTRICT
 
-opencl_matmul_test: opencl_matmul_test.o opencl_matmul.o opencl_helper.o matmul.o
-	$(CC) -o opencl_matmul_test opencl_matmul_test.o opencl_matmul.o opencl_helper.o matmul.o -lOpenCL -lpthread -lquadmath
+opencl_matmul_test: opencl_matmul_test.o opencl_matmul.o opencl_helper.o matmul.o gener_tiling.o
+	$(CC) -o opencl_matmul_test opencl_matmul_test.o opencl_matmul.o opencl_helper.o matmul.o gener_tiling.o -lOpenCL -lpthread -lquadmath
 
 opencl_matmul_test.o: opencl_matmul_test.c opencl_helper.h
 	$(CC) -c -o opencl_matmul_test.o opencl_matmul_test.c $(CCFLAGS) -DCL_TARGET_OPENCL_VERSION=220

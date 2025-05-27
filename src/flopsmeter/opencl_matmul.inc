@@ -19,7 +19,6 @@ void PREC_name(_opencl_matmul_t)(
 {
 
     cl_int errval;                     // most cl* functions returns a common status value
-    size_t global_sizes[2];            // global work sizes (we have 2 dimensions)
     size_t local_sizes[2];             // local work sizes (work_group_size)
     size_t work_group_size;            // CL_KERNEL_WORK_GROUP_SIZE
     size_t work_group_multiplier_hint; // CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE
@@ -27,6 +26,7 @@ void PREC_name(_opencl_matmul_t)(
     cl_context context;                // get this via clGetCommandQueueInfo(CL_QUEUE_CONTEXT)
     cl_device_id device_id;            // get this via clGetCommandQueueInfo(CL_QUEUE_DEVICE)
     cl_kernel kernel;
+    cl_ulong cachesize;
 
     cl_mem in1_mem;                     // device memory used for the in1 matrix
     cl_mem in2_mem;                     // device memory used for the in2 matrix
@@ -67,28 +67,21 @@ void PREC_name(_opencl_matmul_t)(
     opencl_assert(errval, "clGetKernelWorkGroupInfo(CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE)");
     //printf("   work group multiplier hint: %lu\n", work_group_multiplier_hint);
 
-    // We have 2d data set
-    // 1) global_sizes must be greater than I,J
-    // 2) global sizes must be multiple of local_sizes
-    // 3) local_sizes must be multiple of work_group_multiplier_hint
-    //    ? in each dimension? the product would make more sense
-    if( 0==loc1 || 0==loc2){ // DEBUG/testing
-        local_sizes[0] = 1;  // always work but ineffective
-        local_sizes[1] = 1;
-        for(size_t tryon_multiplier=1; tryon_multiplier < 9; tryon_multiplier++){
-            size_t l1, l2;
-            //printf("    tryon_multiplier=%lu\n", tryon_multiplier);
-
-            l1 = (size_t) ceil(sqrt( in2->i * tryon_multiplier * work_group_multiplier_hint/ (double)in2->i ));
-            l2 = (tryon_multiplier * work_group_multiplier_hint) /  l1;
-            if( l1*l2 <= work_group_size){
-                local_sizes[0] = l1;
-                local_sizes[1] = l2;
-                //printf("    probing local sizes: (%lu, %lu)\n", local_sizes[0], local_sizes[1]);
-            }
-
+    // local_sizes must be near, but less or equal to work_group_multiplier_hint (thats is a warp size)
+    if( 0==loc1 || 0==loc2){ // user does not specified the local_sizes
+        if(work_group_multiplier_hint <= 4){
+            local_sizes[0] = 2;
+        } else if(work_group_multiplier_hint <= 8 ){
+            local_sizes[0] = 2;
+        } else {
+            local_sizes[0] = 4;
         }
-    } else {
+        local_sizes[1] = work_group_multiplier_hint /local_sizes[0];
+        if( local_sizes[0] * local_sizes[1] > work_group_size){
+            printf("   Calculated workgroup (%lu, %lu ) is greather than %lu do nothing\n", local_sizes[0], local_sizes[1], work_group_size);
+            return;
+        }
+    } else { // if user specified
         local_sizes[0] = loc1;
         local_sizes[1] = loc2;
     }
@@ -98,11 +91,16 @@ void PREC_name(_opencl_matmul_t)(
         return ;
     }
 
+    // We have 2d data set
+    // we will tiling for optimal L2 cache usage.
+    // Tiling is implemented via global_sizes and global_work_offset.
+    errval = clGetDeviceInfo(device_id, CL_DEVICE_GLOBAL_MEM_CACHE_SIZE, sizeof(cachesize), &cachesize, NULL);
+    opencl_assert(errval, "clGetDeviceInfo(CL_DEVICE_GLOBAL_MEM_CACHE_SIZE)");
+    cachesize /= sizeof(PREC_t);
+    //printf("    DEBUG cache size:%lu items\n", cachesize);
+
+
     //printf("   Choosed local sizes: (%lu, %lu)\n", local_sizes[0], local_sizes[1]);
-    /* per-dimensional roundup*/
-    global_sizes[0] = roundup(in1->i, local_sizes[0]); // I
-    global_sizes[1] = roundup(in2->i, local_sizes[1]); // J
-    //printf("   Choosed global sizes: (%lu, %lu)\n", global_sizes[0], global_sizes[1]);
 
     // Create buffers in device memory. Also copy in immediatly
 #ifdef ROWPADDING
@@ -144,22 +142,42 @@ void PREC_name(_opencl_matmul_t)(
         opencl_assert(errval, "clSetKernelArg(7=Kroundup");
     }
 #endif
+    {    // The tiling cycle
+        // The tiling continues until the entire output matrix of size I,J has been tiled.
+        struct generstate gs;
+        size_t matrixsize[2];
+        size_t global_sizes[2];            // global work sizes (we have 2 dimensions)
+        size_t global_work_offset[2];      // global work offsets
+        int tile_retval;
 
+        matrixsize[0] = in1->i;
+        matrixsize[1] = in2->i;
 
-    errval = clEnqueueNDRangeKernel(
-        commands, //cl_command_queue command_queue,
-        kernel,   //cl_kernel kernel,
-        2,        //cl_uint work_dim,
-        NULL,     //const size_t* global_work_offset,
-        global_sizes,  //const size_t* global_work_size,
-        local_sizes,   //const size_t* local_work_size,
-        0,        //cl_uint num_events_in_wait_list,
-        NULL,     //const cl_event* event_wait_list,
-        NULL);    //cl_event* event
+#ifdef ROWPADDING
+        gener_tiling_init(&gs, matrixsize,  roundup(in1->j, ROWPADDING), cachesize, local_sizes);
+#else
+        gener_tiling_init(&gs, matrixsize, in1->j, cachesize, local_sizes);
+#endif
+        for(tile_retval = gener_tiling_next(&gs, global_work_offset, global_sizes);
+            tile_retval == 1;
+            tile_retval = gener_tiling_next(&gs, global_work_offset, global_sizes)){
+                errval = clEnqueueNDRangeKernel(
+                    commands, //cl_command_queue command_queue,
+                    kernel,   //cl_kernel kernel,
+                    2,        //cl_uint work_dim,
+                    global_work_offset, //const size_t* global_work_offset,
+                    global_sizes,       //const size_t* global_work_size,
+                    local_sizes,        //const size_t* local_work_size,
+                    0,        //cl_uint num_events_in_wait_list,
+                    NULL,     //const cl_event* event_wait_list,
+                    NULL);    //cl_event* event
+                opencl_assert(errval, "clEnqueueNDRangeKernel");
 
-    opencl_assert(errval, "clEnqueueNDRangeKernel");
+        }/* end for gener_tiling */
 
-    /* unecessary: see clEnqueueReadBuffer( CL_TRUE)
+    } /* end tiling cycle */
+
+    /* unecessary clFinish: see clEnqueueReadBuffer( CL_TRUE)
         // Wait for the command commands to get serviced before reading back results
         errval = clFinish(commands);
         opencl_assert(errval, "clFinish");

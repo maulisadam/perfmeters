@@ -21,6 +21,7 @@
 
 #include "opencl_helper.h"
 #include "opencl_matmul.h"
+#include "gener_tiling.h"
 
 // example for modulo 5: 0->0; 1->5; 4->5; 5->5; 6->10
 static inline size_t roundup(size_t what, size_t modulo)
