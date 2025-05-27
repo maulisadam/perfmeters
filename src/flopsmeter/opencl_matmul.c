@@ -8,7 +8,6 @@
 **
 */
 
-#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
