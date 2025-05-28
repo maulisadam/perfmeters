@@ -29,6 +29,7 @@ struct generstate{
     size_t current_tilenum[2];    // loop variable
     size_t tilenumber[2];         // loop delimiter
     int row_increment;            // or decrement: +1 or -1
+    size_t total_call_count;	  // for debug
     uint32_t magic;
 };
 
