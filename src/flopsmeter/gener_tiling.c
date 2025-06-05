@@ -78,8 +78,10 @@ int gener_tiling_init(
     // we will tiling for optimal L2 cache usage.
     // let the K be the row length
     // let the C be the cache size
-    // the opimal_tiling_size is sqrt(C+K^2)-K in each dimension
-    gs->opimal_tiling_size = sqrt( (double)cachesize + (double)(K)*(double)(K)) - (double)(K);
+    // the opimal_tiling_size is sqrt(C+K^2)-K in each dimension, if input rows and ouput tile must be fit in the cache
+    //gs->opimal_tiling_size = sqrt( (double)cachesize + (double)(K)*(double)(K)) - (double)(K);
+    // the opimal_tiling_size is C/K/2, if only input rows should be fit in the cache
+    gs->opimal_tiling_size = (double)cachesize/(double)(K)/2.0;
     gs->granularity[0] = granularity[0];
     gs->granularity[1] = granularity[1];
 
@@ -96,7 +98,7 @@ int gener_tiling_init(
         // size: 18, optimal_tile_size: 5; then 5,5,5,3 is a bad tiling. 5,5,4,4 is mutch better
         // for size:21 the optimal tiling is 5,4,4,4,4.
 
-        printf("    DEBUG optimal_tiling_size:%f\n", gs->opimal_tiling_size);
+        //printf("    DEBUG optimal_tiling_size:%f\n", gs->opimal_tiling_size);
         size_t optimal_tilesize0 = ((int)floor(gs->opimal_tiling_size) / granularity[0]);  // round down: not exceed the cache size
         size_t optimal_tilesize1 = ((int)floor(gs->opimal_tiling_size) / granularity[1]);  // round down: not exceed the cache size
         if( optimal_tilesize0 <1 ){
@@ -107,19 +109,19 @@ int gener_tiling_init(
             dprintf(2, "Warning: matrix size is too large for fit any tile in the cache. Continue anyway.\n");
             optimal_tilesize1 =  1;
         }
-	printf("    DEBUG granularity:(%lu, %lu)\n",  granularity[0], granularity[1]);
-        printf("    DEBUG optimal_tilesize:(%lu, %lu) * gran\n", optimal_tilesize0, optimal_tilesize1);
+	    //printf("    DEBUG granularity:(%lu, %lu)\n",  granularity[0], granularity[1]);
+        //printf("    DEBUG optimal_tilesize:(%lu, %lu) * gran\n", optimal_tilesize0, optimal_tilesize1);
 
         size_t matrixsize0 = divideup(matrix_size[0], granularity[0]);               // round up: the matrix must be fit
         size_t matrixsize1 = divideup(matrix_size[1], granularity[1]);               // round up: the matrix must be fit
-        printf("    DEBUG matrixsize:(%lu, %lu) * gran\n", matrixsize0, matrixsize1);
+        //printf("    DEBUG matrixsize:(%lu, %lu) * gran\n", matrixsize0, matrixsize1);
         // how many tiles?
         gs->tilenumber[0] = divideup(matrixsize0, optimal_tilesize0);
         gs->tilenumber[1] = divideup(matrixsize1, optimal_tilesize1);
-        printf("    DEBUG tilenumber:(%lu, %lu) product:%lu\n",  gs->tilenumber[0],  gs->tilenumber[1], gs->tilenumber[0] * gs->tilenumber[1]);
+        //printf("    DEBUG tilenumber:(%lu, %lu) product:%lu\n",  gs->tilenumber[0],  gs->tilenumber[1], gs->tilenumber[0] * gs->tilenumber[1]);
         gs->base_tilesize[0] = matrixsize0 / gs->tilenumber[0];
         gs->base_tilesize[1] = matrixsize1 / gs->tilenumber[1];
-        printf("    DEBUG base_tilesize:(%lu, %lu)\n", gs->base_tilesize[0], gs->base_tilesize[1]);
+        //printf("    DEBUG base_tilesize:(%lu, %lu)\n", gs->base_tilesize[0], gs->base_tilesize[1]);
         gs->tilesize_remainder[0] = matrixsize0 % gs->tilenumber[0];
         gs->tilesize_remainder[1] = matrixsize1 % gs->tilenumber[1];
         //printf("    DEBUG tilesize_remainder:(%lu, %lu)\n", gs->tilesize_remainder[0], gs->tilesize_remainder[1]);
@@ -154,7 +156,7 @@ int gener_tiling_next(
         offset[0] = offset[1] = 0;
         tilesize[0] = tilesize[1] = 0;
         gs->magic = 0;
-	printf("    DEBUG gener_tiling_next total call count:%lu\n", gs->total_call_count);
+	    //printf("    DEBUG gener_tiling_next total call count:%lu\n", gs->total_call_count);
         return 0; // end iteration
     }
     gs->total_call_count ++;
