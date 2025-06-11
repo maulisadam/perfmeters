@@ -50,7 +50,7 @@ static char * get_cpu_model_name(void)
     }
     buff[0] = '\n';
     while( 0 == cache && 0 != buff[0]){
-        (void) fgets(buff, 3000, fd);
+        if( fgets(buff, 3000, fd)){;} // avoid compiller warning '-Wunused-result' , I'm sorry
         linelen = strlen(buff);
         //printf("D loaded line: »%*s«\n", matchstringlen+1, buff);
         if( '\n' != buff[linelen-1] ){
