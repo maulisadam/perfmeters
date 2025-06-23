@@ -80,6 +80,7 @@ void opencl_initialize_environment(
     cl_context context;
     cl_command_queue commands;
     cl_program program;
+    char compileoptions[300];
 
     // Create a compute context
     context = clCreateContext(0, 1, &device_id, NULL, NULL, &errval);
@@ -89,16 +90,19 @@ void opencl_initialize_environment(
     program = clCreateProgramWithSource(context, 1, opencl_readsource("opencl_matmul.cl") , NULL, &errval);
     opencl_assert(errval, "clCreateProgramWithSource");
 
+
+#ifdef ROWPADDING
+    sprintf(compileoptions, "-DROWPADDING -I %s", CURDIR);  // compile-time curdir, set in the Makefile (dirt hack)
+#else
+    sprintf(compileoptions, "-I %s", CURDIR);
+#endif
+
     // Build the program executable
     errval = clBuildProgram(// Builds (compiles and links) a program executable
             program,        // cl_program program,
             1,              // cl_uint num_devices,
             &device_id,     // const cl_device_id* device_list,
-#ifdef ROWPADDING
-            "-DROWPADDING",
-#else
-            NULL,           // const char* options, like command line options for gcc, like "-I /tmp -DFOOBAR"
-#endif
+            compileoptions, // const char* options, like command line options for gcc, like "-I /tmp -DFOOBAR"
             NULL,           // pointer of a callback routine for assync build
             NULL);          // void*,  parameter for callback routine
     if (errval != CL_SUCCESS)

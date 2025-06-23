@@ -1,5 +1,5 @@
 .PHONY: clean all test
-CCFLAGS = -O4 -Wall -Wextra -march=native -ffast-math -DCL_TARGET_OPENCL_VERSION=300 -DUSE_RESTRICT -DROWPADDING=128
+CCFLAGS = -O4 -Wall -Wextra -march=native -ffast-math -DCL_TARGET_OPENCL_VERSION=220 -DUSE_RESTRICT -DCURDIR=\"$(CURDIR)\" -DROWPADDING=128
 # profiling: -pg
 CC = gcc
 LINKFLAGS = -lOpenCL -lpthread -lquadmath -lm
@@ -12,6 +12,7 @@ TESTFILES = A.txt B.txt C.txt
 all: $(ALL)
 
 flopsmeter: flopsmeter.o matmul.o
+	echo $(CURDIR)
 	$(LINKER) -o flopsmeter flopsmeter.o matmul.o $(LINKFLAGS)
 
 flopsmeter.o: flopsmeter.c matmul.h
